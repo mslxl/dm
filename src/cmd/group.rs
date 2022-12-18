@@ -1,8 +1,5 @@
-use crate::{
-    group_cfg::{GroupConfigurationReader, GroupConfigurationWriter},
-    local::with_group_cfg_mut,
-};
-use std::process;
+use crate::group_cfg::{with_group_cfg_mut, GroupConfigurationReader, GroupConfigurationWriter};
+use std::{process, fs, path::PathBuf, env};
 
 use super::GroupCommands;
 
@@ -13,7 +10,7 @@ fn group_new(name: &str, desc: Option<&str>) {
             process::exit(0);
         }
         cfg.group_add(name);
-        if let Some(desc) = desc{
+        if let Some(desc) = desc {
             cfg.group_setfield(name, "description", desc)
         }
     });
@@ -31,9 +28,22 @@ fn group_set_enable(name: &str, enable: bool) {
 
 pub fn group_commands(command: GroupCommands) {
     match command {
-        GroupCommands::New { name , desc} => group_new(&name, desc.as_deref()),
+        GroupCommands::New { name, desc } => group_new(&name, desc.as_deref()),
         GroupCommands::Enable { name } => group_set_enable(&name, true),
         GroupCommands::Disable { name } => group_set_enable(&name, false),
         _ => todo!(),
     }
+}
+
+pub fn group_addfile(group: &str, encrypt: bool, file: &str){
+    with_group_cfg_mut(|cfg| {
+        let mut path = PathBuf::from(&file);
+        if !path.exists() {
+            panic!("{} not exists", file);
+        }
+        if path.is_relative() {
+            path = env::current_dir().unwrap().join(path);
+        }
+        cfg.group_addfile(group, path.to_str().unwrap().to_owned());
+    });
 }

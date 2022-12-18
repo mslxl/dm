@@ -1,4 +1,11 @@
-use toml_edit::{table, value, Document, Value};
+use std::{env, path::PathBuf};
+
+use toml_edit::{array, table, value, Array, Document, InlineTable, Item, TableLike, Value};
+
+use crate::{
+    local::{get_depository_config_filename, with_toml_cfg, with_toml_cfg_mut},
+    util::to_depositiory_path,
+};
 
 pub struct GroupConfiguration<'a>(&'a Document);
 
@@ -54,6 +61,8 @@ pub trait GroupConfigurationWriter: GroupConfigurationReader {
     fn group_setfield<T>(&mut self, name: &str, fieldname: &str, v: T)
     where
         T: Into<Value>;
+
+    fn group_addfile(&mut self, name: &str, filename: String);
 }
 
 impl<T> GroupConfigurationReader for T
@@ -61,8 +70,7 @@ where
     T: GroupTomlDocument,
 {
     fn group_exists(&self, name: &str) -> bool {
-        self.doc_deref()
-            .contains_table(name)
+        self.doc_deref().contains_table(name)
     }
 }
 
@@ -72,10 +80,27 @@ where
 {
     fn group_add(&mut self, name: &str) {
         let r = self.doc_deref_mut();
-        if ! r.contains_table(name){
+        if !r.contains_table(name) {
             r[name] = table();
         }
         r[name]["enable"] = value(true);
+    }
+
+    fn group_addfile(&mut self, name: &str, filename: String) {
+        let r = self.doc_deref_mut();
+        if !r[name].as_table().unwrap().contains_key("files") {
+            r[name]["files"] = value(Array::new());
+        }
+        let mut table = InlineTable::new();
+        table.insert(
+            "file",
+            to_depositiory_path(PathBuf::from(&filename))
+                .to_str()
+                .unwrap()
+                .into(),
+        );
+        table.insert(std::env::consts::OS, filename.into());
+        r[name]["files"].as_array_mut().unwrap().push(table);
     }
 
     fn group_setfield<V>(&mut self, name: &str, fieldname: &str, v: V)
@@ -85,4 +110,24 @@ where
         let r = self.doc_deref_mut();
         r[name][fieldname] = value(v);
     }
+}
+
+pub fn with_group_cfg<F>(block: F)
+where
+    F: FnOnce(&GroupConfiguration),
+{
+    with_toml_cfg(get_depository_config_filename(), |doc| {
+        let cfg = GroupConfiguration::from(doc);
+        block(&cfg)
+    });
+}
+
+pub fn with_group_cfg_mut<F>(block: F)
+where
+    F: FnOnce(&mut GroupConfigurationMut),
+{
+    with_toml_cfg_mut(get_depository_config_filename(), |doc| {
+        let mut cfg = GroupConfigurationMut::from(doc);
+        block(&mut cfg);
+    })
 }

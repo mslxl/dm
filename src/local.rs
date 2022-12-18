@@ -82,23 +82,3 @@ where
         path.to_str().unwrap()
     ));
 }
-
-pub fn with_group_cfg<F>(block: F)
-where
-    F: FnOnce(&GroupConfiguration),
-{
-    with_toml_cfg(get_depository_config_filename(), |doc|{
-        let cfg = GroupConfiguration::from(doc);
-        block(&cfg)
-    });
-}
-
-pub fn with_group_cfg_mut<F>(block: F)
-where
-    F: FnOnce(&mut GroupConfigurationMut),
-{
-    with_toml_cfg_mut(get_depository_config_filename(), |doc| {
-        let mut cfg = GroupConfigurationMut::from(doc);
-        block(&mut cfg);
-    })
-}

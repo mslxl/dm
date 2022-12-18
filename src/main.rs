@@ -1,5 +1,6 @@
-mod group_cfg;
 mod cmd;
+mod util;
+mod group_cfg;
 mod local;
 
 use clap::Parser;
@@ -24,10 +25,19 @@ fn info() {
 }
 
 fn main() {
-    let args = Cli::parse();
+    let args = Cli::parse_from(wild::args());
     match args.command {
         Commands::Group { command } => cmd::group::group_commands(command),
         Commands::Info => info(),
+        Commands::AddFile {
+            group,
+            encrypt,
+            files,
+        } => {
+            for f in files {
+                cmd::group::group_addfile(&group, encrypt, &f)
+            }
+        }
         _ => todo!(),
     }
 }
