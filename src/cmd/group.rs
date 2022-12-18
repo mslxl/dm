@@ -1,29 +1,23 @@
-use crate::group_cfg::{with_group_cfg_mut, GroupConfigurationReader, GroupConfigurationWriter};
-use std::{process, fs, path::PathBuf, env};
+use std::path::PathBuf;
+
+use crate::cfg::group::GroupConfigurationItemWriter;
+use crate::cfg::GROUP_CONFIG;
 
 use super::GroupCommands;
 
 fn group_new(name: &str, desc: Option<&str>) {
-    with_group_cfg_mut(|cfg| {
-        if cfg.group_exists(name) {
-            println!("Group already exists");
-            process::exit(0);
-        }
-        cfg.group_add(name);
-        if let Some(desc) = desc {
-            cfg.group_setfield(name, "description", desc)
-        }
-    });
+    let mut cfg = GROUP_CONFIG.lock().unwrap();
+    let mut group = cfg.group_mut(name);
+    group.create().expect("Group already exists");
+    if let Some(desc) = desc {
+        group.set_field("description", desc).unwrap();
+    }
 }
 
 fn group_set_enable(name: &str, enable: bool) {
-    with_group_cfg_mut(|cfg| {
-        if !cfg.group_exists(name) {
-            println!("Group not exists");
-            process::exit(-1);
-        }
-        cfg.group_setfield(name, "enable", enable);
-    });
+    let mut cfg = GROUP_CONFIG.lock().unwrap();
+    let mut group = cfg.group_mut(name);
+    group.set_field("enable", enable).expect("Group not exists");
 }
 
 pub fn group_commands(command: GroupCommands) {
@@ -35,15 +29,14 @@ pub fn group_commands(command: GroupCommands) {
     }
 }
 
-pub fn group_addfile(group: &str, encrypt: bool, file: &str){
-    with_group_cfg_mut(|cfg| {
-        let mut path = PathBuf::from(&file);
-        if !path.exists() {
-            panic!("{} not exists", file);
-        }
-        if path.is_relative() {
-            path = env::current_dir().unwrap().join(path);
-        }
-        cfg.group_addfile(group, path.to_str().unwrap().to_owned());
-    });
+pub fn group_addfile(group: &str, encrypt: bool, file: &str) {
+    let mut cfg = GROUP_CONFIG.lock().unwrap();
+    let mut group = cfg.group_mut(group);
+
+    let path = PathBuf::from(file)
+        .canonicalize()
+        .expect(&format!("{} not exists", file));
+    group
+        .add_file(&path, encrypt)
+        .expect(&format!("Error occured when register {:?}", &path));
 }

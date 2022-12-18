@@ -1,8 +1,5 @@
 use std::path::PathBuf;
 use std::{env, fs};
-use toml_edit::Document;
-
-use crate::group_cfg::{GroupConfiguration, GroupConfigurationMut};
 
 pub fn get_xdg_data_dir() -> PathBuf {
     let path = env::var("DM_DATA_HOME")
@@ -48,37 +45,4 @@ pub fn get_depository_config_filename() -> PathBuf {
         fs::File::create(&file).unwrap();
     }
     file
-}
-
-pub fn with_toml_cfg<F>(path: PathBuf, block: F)
-where
-    F: FnOnce(&Document),
-{
-    let cfg = fs::read_to_string(&path)
-        .expect(&format!(
-            "Error occured when reading {}",
-            path.to_str().unwrap()
-        ))
-        .parse::<Document>()
-        .expect(&format!("Invalid config file {}", path.to_str().unwrap()));
-    block(&cfg);
-}
-
-pub fn with_toml_cfg_mut<F>(path: PathBuf, block: F)
-where
-    F: FnOnce(&mut Document),
-{
-    let mut cfg = fs::read_to_string(&path)
-        .expect(&format!(
-            "Error occured when reading {}",
-            path.to_str().unwrap()
-        ))
-        .parse::<Document>()
-        .expect(&format!("Invalid config file {}", path.to_str().unwrap()));
-    block(&mut cfg);
-    cfg.fmt();
-    fs::write(&path, cfg.to_string()).expect(&format!(
-        "Error occured when writing {}",
-        path.to_str().unwrap()
-    ));
 }

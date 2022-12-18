@@ -115,6 +115,7 @@ name = "dm"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "once_cell",
  "tokio",
  "toml_edit",
  "tui",

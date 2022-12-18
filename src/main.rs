@@ -1,13 +1,14 @@
 mod cmd;
 mod util;
-mod group_cfg;
-mod local;
+mod cfg;
+mod env;
+mod hook;
 
 use clap::Parser;
 use cmd::{Cli, Commands};
-use local::get_depository_dir;
+use env::get_depository_dir;
 
-use crate::local::{get_depository_config_filename, get_local_config_filename};
+use crate::env::{get_depository_config_filename, get_local_config_filename};
 
 fn info() {
     println!(
@@ -40,4 +41,6 @@ fn main() {
         }
         _ => todo!(),
     }
+
+    cfg::save_config();
 }

@@ -14,3 +14,4 @@ clap = { version = "4.0.29", features = ["derive"] }
 wild = "2.1.0"
 tokio = "1.23.0"
 toml_edit = "0.15.0"
+once_cell = "1.16.0"
