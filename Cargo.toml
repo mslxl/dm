@@ -11,5 +11,6 @@ license = "agpl3"
 # git2 = "0.14"
 tui = "0.19.0"
 clap = { version = "4.0.29", features = ["derive"] }
+wild = "2.1.0"
 tokio = "1.23.0"
-toml = "0.5.10"
+toml_edit = "0.15.0"

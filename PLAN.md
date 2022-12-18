@@ -8,7 +8,7 @@ DM 并不打算直接管理文件，而是管理 group，每个文件必须有�
 
 #### 新建 group
 ```bash
-dm new gruop <group-name>
+dm gruop new <group-name>
 # dm n g <group-name>
 ```
 
