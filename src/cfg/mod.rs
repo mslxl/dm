@@ -1,30 +1,20 @@
-use std::{fs, sync::Mutex};
+pub mod transcation;
 
-use once_cell::sync::Lazy;
+use std::fmt::Debug;
 
-use crate::env::get_depository_config_filename;
+pub struct CfgError {
+    message: String,
+}
 
-use self::group::GroupConfiguration;
-
-pub mod group;
-
-static GROUP_CONFIG_INIT: Mutex<bool> = Mutex::new(false);
-
-pub static GROUP_CONFIG: Lazy<Mutex<GroupConfiguration>> = Lazy::new(|| {
-    let path = get_depository_config_filename();
-    let cfg = fs::read_to_string(&path)
-        .expect(&format!("Error occured when reading {:?}", &path))
-        .parse::<GroupConfiguration>()
-        .expect(&format!("Invalid config file {:?}", &path));
-
-    *GROUP_CONFIG_INIT.lock().unwrap() = true;
-    Mutex::new(cfg)
-});
-
-pub fn save_config() {
-    if *GROUP_CONFIG_INIT.lock().unwrap() {
-        let path = get_depository_config_filename();
-        fs::write(path, GROUP_CONFIG.lock().unwrap().to_string())
-            .expect("Error occured when saving depository config");
+impl CfgError {
+    fn new(message: String) -> Self {
+        Self { message }
     }
 }
+
+impl Debug for CfgError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+

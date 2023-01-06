@@ -31,18 +31,3 @@ pub fn get_depository_dir() -> PathBuf {
     dir
 }
 
-pub fn get_local_config_filename() -> PathBuf {
-    let file = get_xdg_config_dir().join("dm.toml");
-    if !file.exists() {
-        fs::File::create(&file).unwrap();
-    }
-    file
-}
-
-pub fn get_depository_config_filename() -> PathBuf {
-    let file = get_depository_dir().join("depository.toml");
-    if !file.exists() {
-        fs::File::create(&file).unwrap();
-    }
-    file
-}
