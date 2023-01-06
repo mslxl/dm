@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 use crate::{
-    cfg::transcation::{self, Transcation},
+    cfg::transcation::{self, Transcation, GroupFileConfigurationHelperMut},
     env::get_depository_dir,
 };
 
@@ -50,7 +50,6 @@ pub enum Commands {
 pub enum NewCommands {
     Group { name: String, desc: Option<String> },
 }
-
 impl NewCommands {
     pub fn exec(self) {
         match self {
@@ -72,26 +71,48 @@ fn info() {
         get_depository_dir().to_str().unwrap()
     );
 }
-pub fn start_dm(args: Commands) {
-    match args {
-        Commands::New { command } => command.exec(),
-        Commands::AddFile {
-            group,
-            encrypt,
-            files,
-        } => todo!(),
-        Commands::AddDir {
-            group,
-            encrypt,
-            files,
-        } => todo!(),
-        Commands::Remove { files } => todo!(),
-        Commands::Update { group } => todo!(),
-        Commands::Install { group } => todo!(),
-        Commands::Push => todo!(),
-        Commands::Pull => todo!(),
-        Commands::Tui => todo!(),
-        Commands::Config { key, value, local } => todo!(),
-        Commands::Info => info(),
+
+fn add_file(group: String, encrypt: bool, files: Vec<String>) {
+    let mut transcation = Transcation::new(get_depository_dir());
+
+    {
+        let mut group = transcation.group_mut(group).unwrap();
+        for file in files {
+            let path = PathBuf::from(&file);
+            if !path.exists() {
+                panic!("File be must exists: {}", file);
+            }
+            let mut helper = group.add_file(path).unwrap();
+            helper.set_encrypt(encrypt);
+            
+            todo!("update file to transcation");
+        }
+    }
+
+    transcation.save().unwrap();
+}
+impl Commands {
+    pub fn exec(self) {
+        match self {
+            Commands::New { command } => command.exec(),
+            Commands::AddDir {
+                group,
+                encrypt,
+                files,
+            } => todo!(),
+            Commands::AddFile {
+                group,
+                encrypt,
+                files,
+            } => add_file(group, encrypt, files),
+            Commands::Remove { files } => todo!(),
+            Commands::Update { group } => todo!(),
+            Commands::Install { group } => todo!(),
+            Commands::Push => todo!(),
+            Commands::Pull => todo!(),
+            Commands::Tui => todo!(),
+            Commands::Config { key, value, local } => todo!(),
+            Commands::Info => info(),
+        }
     }
 }

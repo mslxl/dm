@@ -4,8 +4,7 @@ mod env;
 mod util;
 
 use clap::Parser;
-use cmd::{start_dm, Commands};
-use env::get_depository_dir;
+use cmd::Commands;
 
 
 #[derive(Parser)]
@@ -17,5 +16,5 @@ pub struct Cli {
 
 fn main() {
     let args = Cli::parse_from(wild::args());
-    start_dm(args.command);
+    args.command.exec();
 }

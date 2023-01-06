@@ -1,8 +1,11 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
+use std::env;
 use std::path::PathBuf;
 use std::{fs, iter::empty};
-use toml_edit::{array, table, value, ArrayOfTablesIter, Document, Table};
+use toml_edit::{array, table, value, Array, ArrayOfTablesIter, Document, Table, Value};
+
+use crate::util::rel_to_depositiory_path;
 
 use super::CfgError;
 
@@ -13,6 +16,13 @@ pub struct Transcation {
 }
 
 impl Transcation {
+    const GENERAL_SECTION_KEY: &'static str = "general";
+
+    /// Init transcation
+    /// It will load global configuration file (dm.toml) automatically,
+    /// if the file does not exists, it will create in memory
+    ///
+    /// All changes will be applied after call `save()` function
     pub fn new(path: PathBuf) -> Self {
         let global_cfg_path = path.join("dm.toml");
         let global_doc = if global_cfg_path.exists() {
@@ -21,7 +31,11 @@ impl Transcation {
                 .parse::<Document>()
                 .expect("Invalid global configuration file")
         } else {
-            Document::new()
+            let mut doc = Document::new();
+            doc[Self::GENERAL_SECTION_KEY] = table();
+            doc[Self::GENERAL_SECTION_KEY].as_table_mut().unwrap()["depository"] =
+                value(Array::new());
+            doc
         };
         Self {
             depository_path: path,
@@ -29,13 +43,21 @@ impl Transcation {
             group_cfg_map: RefCell::new(HashMap::new()),
         }
     }
+    /// Get global configuration helper
     pub fn global(&self) -> &GlobalConfiguration {
         &self.global_cfg
     }
+    /// Get mutable global configuration helper
     pub fn global_mut(&mut self) -> &mut GlobalConfiguration {
         &mut self.global_cfg
     }
 
+    /// Create new group
+    /// attention! this function only register the name and create related configuration
+    ///
+    /// it will fail if the group name already exists
+    ///
+    /// All changes will be applied after called `save` function
     pub fn new_group(&mut self, name: String) -> Result<(), CfgError> {
         let path = self
             .depository_path
@@ -45,15 +67,33 @@ impl Transcation {
         if path.exists() {
             return Err(CfgError::new(format!("group {} already exists", name)));
         }
+
+        self.global_cfg.document[Self::GENERAL_SECTION_KEY]
+            .as_table_mut()
+            .unwrap()["depository"]
+            .as_array_mut()
+            .unwrap()
+            .push(&name);
+
         let cfg = GroupConfiguration::empty(path, &name);
+
         self.group_cfg_map.borrow_mut().insert(name, cfg);
         Ok(())
     }
 
+    /// If group does not loaded, the function will try to load it, else it will do nothing
+    /// it will failed if configuration does not exists
     fn ensure_group_in_map(&self, name: String) -> Option<()> {
-        let path = self.depository_path.join("depository").join(&name);
-        if path.exists() {
-            if !self.group_cfg_map.borrow().contains_key(&name) {
+        if self.group_cfg_map.borrow().contains_key(&name) {
+            Some(())
+        } else {
+            let path = self
+                .depository_path
+                .join("depository")
+                .join(&name)
+                .join("config.toml");
+
+            if path.exists() {
                 let doc = fs::read_to_string(&path)
                     .expect(&format!(
                         "Fail to read {:?} group configuration file",
@@ -64,14 +104,15 @@ impl Transcation {
 
                 self.group_cfg_map
                     .borrow_mut()
-                    .insert(name.clone(), GroupConfiguration::new(path, doc));
+                    .insert(name, GroupConfiguration::new(path, doc));
+                Some(())
+            } else {
+                None
             }
-            Some(())
-        } else {
-            None
         }
     }
 
+    /// Get mutable group configuration helper
     pub fn group_mut(&mut self, name: String) -> Option<RefMut<GroupConfiguration>> {
         self.ensure_group_in_map(name.clone())?;
 
@@ -80,6 +121,7 @@ impl Transcation {
         }))
     }
 
+    /// Get group configuration helper
     pub fn group(&self, name: String) -> Option<Ref<GroupConfiguration>> {
         self.ensure_group_in_map(name.clone())?;
 
@@ -88,6 +130,7 @@ impl Transcation {
         }))
     }
 
+    /// Apply all changes
     pub fn save(&mut self) -> Result<(), CfgError> {
         if !&self.global_cfg.path.parent().unwrap().exists() {
             fs::create_dir_all(&self.global_cfg.path.parent().unwrap())
@@ -126,6 +169,8 @@ impl GlobalConfiguration {
 
     const GROUP_SECTION_KEY: &'static str = "group";
 
+    /// Add group name to global configuration
+    /// it does not change filesystem
     pub fn add_group(&mut self, name: &str) -> Result<(), CfgError> {
         let doc = &mut self.document;
         if !doc.contains_array_of_tables(Self::GROUP_SECTION_KEY) {
@@ -140,6 +185,8 @@ impl GlobalConfiguration {
         array.push(table);
         Ok(())
     }
+    /// Remove group name from global configuration
+    /// it does not change filesystem
     pub fn rm_group(&mut self, name: &str) -> Result<(), CfgError> {
         let doc = &mut self.document;
         if !doc.contains_array_of_tables(Self::GROUP_SECTION_KEY) {
@@ -230,5 +277,143 @@ impl GroupConfiguration {
 
     pub fn get_desc(&self) -> Option<&str> {
         self.get_str_field("description")
+    }
+
+    fn get_file_table_by_rel(&self, rel_path: &PathBuf) -> Option<&Table> {
+        if !self.doc.contains_array_of_tables("files") {
+            return None;
+        }
+        let rel_path = rel_path.to_str().unwrap();
+        self.doc["files"]
+            .as_array_of_tables()
+            .unwrap()
+            .iter()
+            .find(|table| {
+                table.contains_key("location") && table["location"].as_str().unwrap() == rel_path
+            })
+    }
+
+    fn get_file_table_by_rel_mut(&mut self, rel_path: &PathBuf) -> Option<&mut Table> {
+        if !self.doc.contains_array_of_tables("files") {
+            return None;
+        }
+        let rel_path = rel_path.to_str().unwrap();
+        self.doc["files"]
+            .as_array_of_tables_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|table| {
+                table.contains_key("location") && table["location"].as_str().unwrap() == rel_path
+            })
+    }
+
+    fn get_file_table_by_abs(&self, abs: PathBuf) -> Option<&Table> {
+        self.get_file_table_by_rel(&rel_to_depositiory_path(abs))
+    }
+    fn get_file_table_by_abs_mut(&mut self, abs: PathBuf) -> Option<&mut Table> {
+        self.get_file_table_by_rel_mut(&rel_to_depositiory_path(abs))
+    }
+
+    pub fn add_file(
+        &mut self,
+        local_path: PathBuf,
+    ) -> Result<GroupFileConfigurationMut<'_>, CfgError> {
+        let depository_root: PathBuf = self.path.parent().unwrap().into();
+        let record_path = rel_to_depositiory_path(local_path.clone());
+        if let Some(_) = self.get_file_table_by_rel(&record_path) {
+            return Err(CfgError::new(format!(
+                "File '{:?}' already exists in {}",
+                local_path,
+                self.get_name().unwrap()
+            )));
+        }
+        if !self.doc.contains_array_of_tables("files") {
+            self.doc["files"] = array();
+        }
+        let array = self.doc["files"].as_array_of_tables_mut().unwrap();
+        let mut table = Table::new();
+        table["location"] = value(record_path.to_str().unwrap());
+        table[env::consts::OS] = value(local_path.canonicalize().unwrap().to_str().unwrap());
+        array.push(table);
+        let table = array.get_mut(array.len() - 1).unwrap();
+        Ok(GroupFileConfigurationMut::new(table))
+    }
+}
+
+pub struct GroupFileConfiguration<'a> {
+    attr: &'a Table,
+}
+pub struct GroupFileConfigurationMut<'a> {
+    attr: &'a mut Table,
+}
+trait DerefGroupFileConfiguration {
+    fn deref(&self) -> &Table;
+}
+trait DerefMutGroupFileConfiguration {
+    fn deref_mut(&mut self) -> &mut Table;
+}
+impl DerefGroupFileConfiguration for GroupFileConfiguration<'_> {
+    fn deref(&self) -> &Table {
+        self.attr
+    }
+}
+
+impl DerefGroupFileConfiguration for GroupFileConfigurationMut<'_> {
+    fn deref(&self) -> &Table {
+        self.attr
+    }
+}
+
+impl DerefMutGroupFileConfiguration for GroupFileConfigurationMut<'_> {
+    fn deref_mut(&mut self) -> &mut Table {
+        self.attr
+    }
+}
+pub trait GroupFileConfigurationHelper {
+    const GENERAL_SECTION_KEY: &'static str = "general";
+    fn get_field(&self, key: &str) -> Option<&Value>;
+
+    fn is_encrypt(&self) -> bool;
+}
+
+impl<T> GroupFileConfigurationHelper for T
+where
+    T: DerefGroupFileConfiguration,
+{
+    fn get_field(&self, key: &str) -> Option<&Value> {
+        self.deref().get(key).and_then(|item| item.as_value())
+    }
+
+    fn is_encrypt(&self) -> bool {
+        self.get_field("encrypt")
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false)
+    }
+}
+pub trait GroupFileConfigurationHelperMut: GroupFileConfigurationHelper {
+    fn set_field<V: Into<Value>>(&mut self, key: &str, v: V);
+    fn set_encrypt(&mut self, v: bool);
+}
+
+impl<T> GroupFileConfigurationHelperMut for T
+where
+    T: DerefMutGroupFileConfiguration + GroupFileConfigurationHelper + DerefGroupFileConfiguration,
+{
+    fn set_field<V: Into<Value>>(&mut self, key: &str, v: V) {
+        self.deref_mut()[key] = value(v)
+    }
+    fn set_encrypt(&mut self, v: bool) {
+        self.set_field("encrypt", v)
+    }
+}
+
+impl<'a> GroupFileConfiguration<'a> {
+    fn new(attr: &'a Table) -> Self {
+        Self { attr }
+    }
+}
+impl<'a> GroupFileConfigurationMut<'a> {
+    fn new(attr: &'a mut Table) -> Self {
+        Self { attr }
     }
 }
