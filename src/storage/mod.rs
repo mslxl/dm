@@ -1,21 +1,24 @@
-pub mod transcation;
-pub mod global;
-pub mod group;
 pub mod file;
 
 use std::fmt::Debug;
 
-pub struct CfgError {
+pub struct StorageError {
     message: String,
 }
 
-impl CfgError {
+impl StorageError {
     fn new(message: String) -> Self {
         Self { message }
     }
 }
 
-impl Debug for CfgError {
+impl <T> From<T> for StorageError where T:ToString {
+    fn from(err: T) -> Self {
+      Self::new(err.to_string())
+    }
+}
+
+impl Debug for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.message)
     }

@@ -2,6 +2,7 @@ mod cfg;
 mod cmd;
 mod env;
 mod util;
+mod storage;
 
 use clap::Parser;
 use cmd::Commands;
