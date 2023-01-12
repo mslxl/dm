@@ -1,4 +1,7 @@
 # DM - Dotfiles Manager
+
+[![Rust](https://github.com/mslxl/dm/actions/workflows/rust.yml/badge.svg)](https://github.com/mslxl/dm/actions/workflows/rust.yml)
+
 Yet another dotfiles manager written in Rust, it named `dm` simply.
 
 DM is designed to manager in multiply platform, and support many version control tools. In addition to above,

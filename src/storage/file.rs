@@ -45,8 +45,20 @@ fn symlink_file_specify<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) ->
 
 /// Untested!
 #[cfg(target_os = "linux")]
+fn symlink_file_specify<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    os::unix::fs::symlink(original, link)
+}
+
 #[cfg(target_os = "macos")]
+fn symlink_file_specify<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    os::unix::fs::symlink(original, link)
+}
+
 #[cfg(target_os = "android")]
+fn symlink_file_specify<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    os::unix::fs::symlink(original, link)
+}
+
 #[cfg(target_os = "freebsd")]
 fn symlink_file_specify<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     os::unix::fs::symlink(original, link)
