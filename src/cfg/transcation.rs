@@ -4,9 +4,9 @@ use std::fs;
 use std::path::PathBuf;
 use toml_edit::{table, value, Array, Document};
 
-use super::global::GlobalConfiguration;
-use super::group::GroupConfiguration;
-use super::CfgError;
+use crate::cfg::global::GlobalConfiguration;
+use crate::cfg::group::GroupConfiguration;
+use crate::error::Error;
 
 pub struct Transcation {
     depository_path: PathBuf,
@@ -57,14 +57,14 @@ impl Transcation {
     /// it will fail if the group name already exists
     ///
     /// All changes will be applied after called `save` function
-    pub fn new_group(&mut self, name: String) -> Result<RefMut<GroupConfiguration>, CfgError> {
+    pub fn new_group(&mut self, name: String) -> Result<RefMut<GroupConfiguration>, Error> {
         let path = self
             .depository_path
             .join("depository")
             .join(&name)
             .join("config.toml");
         if path.exists() {
-            return Err(CfgError::new(format!("group {} already exists", name)));
+            return Err(Error::err(format!("group {} already exists when program tries to create new group", name)));
         }
 
         self.global_cfg.document[Self::GENERAL_SECTION_KEY]
@@ -142,23 +142,40 @@ impl Transcation {
     }
 
     /// Apply all changes
-    pub fn save(&mut self) -> Result<(), CfgError> {
+    pub fn save(&mut self) -> Result<(), Error> {
         if !&self.global_cfg.path.parent().unwrap().exists() {
-            fs::create_dir_all(&self.global_cfg.path.parent().unwrap())
-                .map_err(|err| CfgError::new(err.to_string()))?;
+            fs::create_dir_all(&self.global_cfg.path.parent().unwrap()).map_err(|err| {
+                Error::err(format!(
+                    "{} when tries to create global configuration parent dir",
+                    err.to_string()
+                ))
+            })?;
         }
 
-        fs::write(&self.global_cfg.path, self.global_cfg.document.to_string())
-            .map_err(|err| CfgError::new(err.to_string()))?;
+        fs::write(&self.global_cfg.path, self.global_cfg.document.to_string()).map_err(|err| {
+            Error::err(format!(
+                "{} when program tries to save global configuration change",
+                err.to_string()
+            ))
+        })?;
 
         let map = self.group_cfg_map.borrow();
         for cfg in map.values() {
             let parent = cfg.path.parent().unwrap();
             if !parent.exists() {
-                fs::create_dir_all(parent).map_err(|err| CfgError::new(err.to_string()))?;
+                fs::create_dir_all(parent).map_err(|err| {
+                    Error::err(format!(
+                        "{} when program tries to create group configuration parent dir",
+                        err.to_string()
+                    ))
+                })?;
             }
-            fs::write(&cfg.path, cfg.doc.to_string())
-                .map_err(|err| CfgError::new(err.to_string()))?;
+            fs::write(&cfg.path, cfg.doc.to_string()).map_err(|err| {
+                Error::err(format!(
+                    "{} when program tries to save group configuration",
+                    err.to_string()
+                ))
+            })?;
         }
 
         Ok(())

@@ -2,9 +2,10 @@ mod cfg;
 mod cmd;
 mod env;
 mod util;
+mod error;
 mod platform;
 mod storage;
-mod healthcheck;
+mod checker;
 
 use clap::Parser;
 use cmd::Commands;

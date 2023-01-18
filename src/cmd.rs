@@ -9,7 +9,7 @@ use crate::{
     },
     env::get_depository_dir,
     storage::{self, file::updatable},
-    util::question, healthcheck,
+    util::cli_question
 };
 
 #[derive(Subcommand, Clone)]
@@ -43,7 +43,7 @@ pub enum Commands {
     Install {
         group: Vec<String>,
     },
-    HealthCheck {
+    Check {
         group: Option<Vec<String>>,
     },
     Push,
@@ -56,6 +56,35 @@ pub enum Commands {
         local: bool,
     },
     Info,
+}
+
+impl Commands {
+    pub fn exec(self) {
+        match self {
+            Commands::New { command } => command.exec(),
+            Commands::AddDir {
+                group,
+                encrypt,
+                files,
+            } => todo!(),
+            Commands::AddFile {
+                group,
+                encrypt,
+                hard_link,
+                soft_link,
+                files,
+            } => cmd_add_file(group, encrypt, hard_link, soft_link, files),
+            Commands::Remove { files } => todo!(),
+            Commands::Update { group } => cmd_update_group(group),
+            Commands::Install { group } => todo!(),
+            Commands::Push => todo!(),
+            Commands::Pull => todo!(),
+            Commands::Tui => todo!(),
+            Commands::Config { key, value, local } => todo!(),
+            Commands::Info => cmd_info(),
+            Commands::Check { group } => cmd_health_check(group),
+        }
+    }
 }
 
 #[derive(Subcommand, Clone)]
@@ -118,7 +147,7 @@ fn cmd_update_group(groups: Vec<String>) {
         for f in files {
             if updatable(&f).unwrap() {
                 if !update_all_file {
-                    let g = question(
+                    let g = cli_question(
                         &format!("Update {}?", f.get_local_path().unwrap()),
                         &[
                             ('Y', "Update this file"),
@@ -160,35 +189,6 @@ fn cmd_health_check(group: Option<Vec<String>>) {
     };
 
     for name in name {
-        healthcheck::health_check(name)
-    }
-}
-
-impl Commands {
-    pub fn exec(self) {
-        match self {
-            Commands::New { command } => command.exec(),
-            Commands::AddDir {
-                group,
-                encrypt,
-                files,
-            } => todo!(),
-            Commands::AddFile {
-                group,
-                encrypt,
-                hard_link,
-                soft_link,
-                files,
-            } => cmd_add_file(group, encrypt, hard_link, soft_link, files),
-            Commands::Remove { files } => todo!(),
-            Commands::Update { group } => cmd_update_group(group),
-            Commands::Install { group } => todo!(),
-            Commands::Push => todo!(),
-            Commands::Pull => todo!(),
-            Commands::Tui => todo!(),
-            Commands::Config { key, value, local } => todo!(),
-            Commands::Info => cmd_info(),
-            Commands::HealthCheck { group } => cmd_health_check(group),
-        }
+        todo!()
     }
 }

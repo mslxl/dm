@@ -2,7 +2,7 @@ use std::{path::PathBuf, iter::empty};
 
 use toml_edit::{Document, Table, ArrayOfTablesIter, array, value};
 
-use super::CfgError;
+use crate::error::Error;
 
 pub struct GlobalConfiguration {
     pub path: PathBuf,
@@ -21,7 +21,7 @@ impl GlobalConfiguration {
 
     /// Add group name to global configuration
     /// it does not change filesystem
-    pub fn add_group(&mut self, name: &str) -> Result<(), CfgError> {
+    pub fn add_group(&mut self, name: &str) -> Result<(), Error> {
         let doc = &mut self.document;
         if !doc.contains_array_of_tables(Self::GROUP_SECTION_KEY) {
             doc[Self::GROUP_SECTION_KEY] = array()
@@ -37,10 +37,10 @@ impl GlobalConfiguration {
     }
     /// Remove group name from global configuration
     /// it does not change filesystem
-    pub fn rm_group(&mut self, name: &str) -> Result<(), CfgError> {
+    pub fn rm_group(&mut self, name: &str) -> Result<(), Error> {
         let doc = &mut self.document;
         if !doc.contains_array_of_tables(Self::GROUP_SECTION_KEY) {
-            return Err(CfgError::new(format!("{} does not exists", name)));
+            return Err(Error::err(format!("{} does not exists when program tries to remove group", name)));
         }
         let array = doc[Self::GROUP_SECTION_KEY]
             .as_array_of_tables_mut()
@@ -49,7 +49,7 @@ impl GlobalConfiguration {
             group.contains_key("name") && group["name"].as_str().unwrap() == name
         });
         match target {
-            None => Err(CfgError::new(format!("{} does not exists", name))),
+            None => Err(Error::err(format!("{} does not exists when program tries to remove group", name))),
             Some((idx, _)) => {
                 array.remove(idx);
                 Ok(())

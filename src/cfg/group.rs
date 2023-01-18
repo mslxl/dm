@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 use toml_edit::{array, table, value, Document, Table};
 
-use crate::util::rel_to_depositiory_path;
+use crate::platform::local_path_to_depositiory_path;
 
-use super::file::{
+use crate::cfg::file::{
     GroupFileConfiguration, GroupFileConfigurationHelper, GroupFileConfigurationHelperMut,
     GroupFileConfigurationMut,
 };
-use super::CfgError;
+use crate::error::Error;
 pub struct GroupConfiguration {
     pub path: PathBuf,
     pub doc: Document,
@@ -92,21 +92,28 @@ impl GroupConfiguration {
     }
 
     fn get_file_table_by_abs(&self, abs: PathBuf) -> Option<GroupFileConfiguration> {
-        self.get_file_table_by_rel(&rel_to_depositiory_path(self.get_name().unwrap(), abs))
+        self.get_file_table_by_rel(&local_path_to_depositiory_path(
+            self.get_name().unwrap(),
+            abs,
+        ))
     }
     fn get_file_table_by_abs_mut(&mut self, abs: PathBuf) -> Option<GroupFileConfigurationMut> {
-        self.get_file_table_by_rel_mut(&rel_to_depositiory_path(self.get_name().unwrap(), abs))
+        self.get_file_table_by_rel_mut(&local_path_to_depositiory_path(
+            self.get_name().unwrap(),
+            abs,
+        ))
     }
 
     pub fn add_file(
         &mut self,
         local_path: PathBuf,
-    ) -> Result<GroupFileConfigurationMut<'_>, CfgError> {
+    ) -> Result<GroupFileConfigurationMut<'_>, Error> {
         // Wether the file ready exists
-        let record_path = rel_to_depositiory_path(self.get_name().unwrap(), local_path.clone());
+        let record_path =
+            local_path_to_depositiory_path(self.get_name().unwrap(), local_path.clone());
         if let Some(_) = self.get_file_table_by_rel(&record_path) {
-            return Err(CfgError::new(format!(
-                "File '{:?}' already exists in {}",
+            return Err(Error::err(format!(
+                "File '{:?}' already exists in {} when program tries to add file in configuration",
                 local_path,
                 self.get_name().unwrap()
             )));
