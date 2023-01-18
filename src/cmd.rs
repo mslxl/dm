@@ -9,7 +9,7 @@ use crate::{
     },
     env::get_depository_dir,
     storage::{self, file::updatable},
-    util::question,
+    util::question, healthcheck,
 };
 
 #[derive(Subcommand, Clone)]
@@ -43,6 +43,9 @@ pub enum Commands {
     Install {
         group: Vec<String>,
     },
+    HealthCheck {
+        group: Option<Vec<String>>,
+    },
     Push,
     Pull,
     Tui,
@@ -74,14 +77,14 @@ impl NewCommands {
     }
 }
 
-fn info() {
+fn cmd_info() {
     println!(
         "Depositiory directory:\t{}",
         get_depository_dir().to_str().unwrap()
     );
 }
 
-fn add_file(group: String, encrypt: bool, hard_link: bool, soft_link: bool, files: Vec<String>) {
+fn cmd_add_file(group: String, encrypt: bool, hard_link: bool, soft_link: bool, files: Vec<String>) {
     let mut transcation = Transcation::new(get_depository_dir());
 
     {
@@ -103,7 +106,7 @@ fn add_file(group: String, encrypt: bool, hard_link: bool, soft_link: bool, file
     transcation.save().unwrap();
 }
 
-fn update_group(groups: Vec<String>) {
+fn cmd_update_group(groups: Vec<String>) {
     let transcation = Transcation::new(get_depository_dir());
 
     let mut update_all_group = false;
@@ -141,6 +144,26 @@ fn update_group(groups: Vec<String>) {
     }
 }
 
+fn cmd_health_check(group: Option<Vec<String>>) {
+    let name = {
+        let transcation = Transcation::new(get_depository_dir());
+
+        if let Some(names) = group {
+            if names.is_empty() {
+                transcation.groups().map(ToString::to_string).collect()
+            } else {
+                names
+            }
+        } else {
+            transcation.groups().map(ToString::to_string).collect()
+        }
+    };
+
+    for name in name {
+        healthcheck::health_check(name)
+    }
+}
+
 impl Commands {
     pub fn exec(self) {
         match self {
@@ -156,15 +179,16 @@ impl Commands {
                 hard_link,
                 soft_link,
                 files,
-            } => add_file(group, encrypt, hard_link, soft_link, files),
+            } => cmd_add_file(group, encrypt, hard_link, soft_link, files),
             Commands::Remove { files } => todo!(),
-            Commands::Update { group } => update_group(group),
+            Commands::Update { group } => cmd_update_group(group),
             Commands::Install { group } => todo!(),
             Commands::Push => todo!(),
             Commands::Pull => todo!(),
             Commands::Tui => todo!(),
             Commands::Config { key, value, local } => todo!(),
-            Commands::Info => info(),
+            Commands::Info => cmd_info(),
+            Commands::HealthCheck { group } => cmd_health_check(group),
         }
     }
 }

@@ -1,13 +1,12 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
-use std::{fs};
-use toml_edit::{ table, value, Array,  Document };
+use toml_edit::{table, value, Array, Document};
 
-
-use super::CfgError;
 use super::global::GlobalConfiguration;
 use super::group::GroupConfiguration;
+use super::CfgError;
 
 pub struct Transcation {
     depository_path: PathBuf,
@@ -78,7 +77,19 @@ impl Transcation {
         let cfg = GroupConfiguration::empty(path, &name);
 
         self.group_cfg_map.borrow_mut().insert(name.clone(), cfg);
-        Ok(RefMut::map(self.group_cfg_map.borrow_mut(), |it|it.get_mut(&name).unwrap()))
+        Ok(RefMut::map(self.group_cfg_map.borrow_mut(), |it| {
+            it.get_mut(&name).unwrap()
+        }))
+    }
+
+    pub fn groups(&self) -> impl Iterator<Item = &str> {
+        self.global_cfg.document[Self::GENERAL_SECTION_KEY]
+            .as_table()
+            .unwrap()["depository"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item.as_str().unwrap())
     }
 
     /// If group does not loaded, the function will try to load it, else it will do nothing
@@ -153,6 +164,3 @@ impl Transcation {
         Ok(())
     }
 }
-
-
-

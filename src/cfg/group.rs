@@ -62,7 +62,7 @@ impl GroupConfiguration {
             .map(GroupFileConfigurationMut::from)
     }
 
-    fn get_file_table_by_rel(&self, rel_path: &PathBuf) -> Option<GroupFileConfiguration> {
+    pub fn get_file_table_by_rel(&self, rel_path: &PathBuf) -> Option<GroupFileConfiguration> {
         if !self.doc.contains_array_of_tables("files") {
             return None;
         }
@@ -75,7 +75,7 @@ impl GroupConfiguration {
         })
     }
 
-    fn get_file_table_by_rel_mut(
+    pub fn get_file_table_by_rel_mut(
         &mut self,
         rel_path: &PathBuf,
     ) -> Option<GroupFileConfigurationMut> {
