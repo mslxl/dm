@@ -8,3 +8,17 @@ DM is designed to manager in multiply platform, and support many version control
 DM is integral with Github and WebDAV etc. web storage service, it can automatically sync files and manage it.
 
 DM manage dotfiles, but it's not manage file directly, DM will manage group that composed by many files. It would proivde users a handy way to add, edit or just remove their configuration from DM.
+
+
+## Building
+
+1. Setup rust, you can follow [this instructions](https://rustup.rs/)
+2. Clone this repository
+```
+git clone git@github.com:mslxl/dm.git
+```
+3. Build
+```
+cargo build --release
+```
+4. Find the executable in `target/release/dm.exe`
