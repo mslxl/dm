@@ -5,11 +5,11 @@ use clap::Subcommand;
 use crate::{
     cfg::{
         file::{GroupFileConfigurationHelper, GroupFileConfigurationHelperMut},
-        transcation::Transcation,
+        transaction::Transaction,
     },
     env::get_depository_dir,
-    storage::{self, file::updatable},
-    util::cli_question
+    storage::{is_file_updatable, update_file},
+    ui,
 };
 
 #[derive(Subcommand, Clone)]
@@ -95,7 +95,7 @@ impl NewCommands {
     pub fn exec(self) {
         match self {
             NewCommands::Group { name, desc } => {
-                let mut transcation = Transcation::new(get_depository_dir());
+                let mut transcation = Transaction::new(get_depository_dir());
                 transcation.new_group(name.clone()).unwrap();
                 if let Some(desc) = desc {
                     transcation.group_mut(name).unwrap().set_desc(&desc);
@@ -113,8 +113,14 @@ fn cmd_info() {
     );
 }
 
-fn cmd_add_file(group: String, encrypt: bool, hard_link: bool, soft_link: bool, files: Vec<String>) {
-    let mut transcation = Transcation::new(get_depository_dir());
+fn cmd_add_file(
+    group: String,
+    encrypt: bool,
+    hard_link: bool,
+    soft_link: bool,
+    files: Vec<String>,
+) {
+    let mut transcation = Transaction::new(get_depository_dir());
 
     {
         let mut group = transcation.group_mut(group).unwrap();
@@ -128,7 +134,7 @@ fn cmd_add_file(group: String, encrypt: bool, hard_link: bool, soft_link: bool, 
             helper.set_hard_link(hard_link);
             helper.set_soft_link(soft_link);
 
-            storage::file::update_file(&helper).unwrap();
+            update_file(&helper).unwrap();
         }
     }
 
@@ -136,7 +142,7 @@ fn cmd_add_file(group: String, encrypt: bool, hard_link: bool, soft_link: bool, 
 }
 
 fn cmd_update_group(groups: Vec<String>) {
-    let transcation = Transcation::new(get_depository_dir());
+    let transcation = Transaction::new(get_depository_dir());
 
     let mut update_all_group = false;
     for group in groups {
@@ -145,9 +151,9 @@ fn cmd_update_group(groups: Vec<String>) {
 
         let mut update_all_file = update_all_group;
         for f in files {
-            if updatable(&f).unwrap() {
+            if is_file_updatable(&f).unwrap() {
                 if !update_all_file {
-                    let g = cli_question(
+                    match ui::get_ui().select(
                         &format!("Update {}?", f.get_local_path().unwrap()),
                         &[
                             ('Y', "Update this file"),
@@ -155,18 +161,23 @@ fn cmd_update_group(groups: Vec<String>) {
                             ('A', "Update all file in same group"),
                             ('G', "Update all file"),
                         ],
-                    );
-                    if g == 'N' {
-                        println!("Skipped");
-                        continue;
-                    } else if g == 'A' {
-                        update_all_file = true;
-                    } else if g == 'G' {
-                        update_all_group = true;
+                    ) {
+                        'N' => {
+                            println!("Skipped");
+                            continue;
+                        }
+                        'A' => {
+                            update_all_file = true;
+                        }
+                        'G' => {
+                            update_all_group = true;
+                        }
+                        'Y' => {},
+                        _ => unreachable!(),
                     }
                 }
                 // The action will be skiped if user input 'N' above
-                storage::file::update_file(&f).unwrap();
+                update_file(&f).unwrap();
                 println!("Succeed")
             }
         }
@@ -175,7 +186,7 @@ fn cmd_update_group(groups: Vec<String>) {
 
 fn cmd_health_check(group: Option<Vec<String>>) {
     let name = {
-        let transcation = Transcation::new(get_depository_dir());
+        let transcation = Transaction::new(get_depository_dir());
 
         if let Some(names) = group {
             if names.is_empty() {

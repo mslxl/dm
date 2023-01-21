@@ -51,15 +51,16 @@ impl GroupConfiguration {
             .as_array_of_tables()
             .unwrap()
             .iter()
-            .map(GroupFileConfiguration::from)
+            .map(|attr| GroupFileConfiguration::new(attr, self.get_name().unwrap().to_string()))
     }
 
     pub fn files_mut(&mut self) -> impl Iterator<Item = GroupFileConfigurationMut> {
+        let name = self.get_name().unwrap().to_string();
         self.doc["files"]
             .as_array_of_tables_mut()
             .unwrap()
             .iter_mut()
-            .map(GroupFileConfigurationMut::from)
+            .map(move |attr| GroupFileConfigurationMut::new(attr, name.clone()))
     }
 
     pub fn get_file_table_by_rel(&self, rel_path: &PathBuf) -> Option<GroupFileConfiguration> {
@@ -123,14 +124,18 @@ impl GroupConfiguration {
             self.doc["files"] = array();
         }
 
+        let group_name = self.get_name().unwrap().to_string();
+
         // Add configuration
         let array = self.doc["files"].as_array_of_tables_mut().unwrap();
         let mut table = Table::new();
-        let mut helper = GroupFileConfigurationMut::from(&mut table);
+        let mut helper =
+            GroupFileConfigurationMut::new(&mut table, group_name.clone());
         helper.set_depository_path(record_path.to_str().unwrap());
         helper.set_local_path(local_path.canonicalize().unwrap().to_str().unwrap());
         array.push(table);
+
         let table = array.get_mut(array.len() - 1).unwrap();
-        Ok(GroupFileConfigurationMut::from(table))
+        Ok(GroupFileConfigurationMut::new(table, group_name))
     }
 }

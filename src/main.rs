@@ -1,11 +1,12 @@
+mod ui;
 mod cfg;
 mod cmd;
 mod env;
-mod util;
+mod lock;
 mod error;
-mod platform;
 mod storage;
 mod checker;
+mod platform;
 
 use clap::Parser;
 use cmd::Commands;

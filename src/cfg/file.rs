@@ -3,13 +3,17 @@ use toml_edit::{value, Table, Value};
 
 pub struct GroupFileConfiguration<'a> {
     attr: &'a Table,
+    group_name: String
 }
 pub struct GroupFileConfigurationMut<'a> {
     attr: &'a mut Table,
+    group_name: String
 }
 trait DerefGroupFileConfiguration {
     fn deref(&self) -> &Table;
+    fn get_group_name(&self) -> &str;
 }
+
 trait DerefMutGroupFileConfiguration {
     fn deref_mut(&mut self) -> &mut Table;
 }
@@ -17,11 +21,18 @@ impl DerefGroupFileConfiguration for GroupFileConfiguration<'_> {
     fn deref(&self) -> &Table {
         self.attr
     }
+
+    fn get_group_name(&self) -> &str {
+        &self.group_name
+    }
 }
 
 impl DerefGroupFileConfiguration for GroupFileConfigurationMut<'_> {
     fn deref(&self) -> &Table {
         self.attr
+    }
+    fn get_group_name(&self) -> &str {
+        &self.group_name
     }
 }
 
@@ -31,6 +42,7 @@ impl DerefMutGroupFileConfiguration for GroupFileConfigurationMut<'_> {
     }
 }
 pub trait GroupFileConfigurationHelper {
+    fn get_group_name(&self) -> &str;
     fn get_field(&self, key: &str) -> Option<&Value>;
 
     fn get_local_path(&self) -> Option<&str>;
@@ -39,12 +51,18 @@ pub trait GroupFileConfigurationHelper {
     fn is_encrypt(&self) -> bool;
     fn is_hard_link(&self) -> bool;
     fn is_soft_link(&self) -> bool;
+    fn is_link(&self)->bool{
+        return self.is_hard_link() || self.is_soft_link();
+    }
 }
 
 impl<T> GroupFileConfigurationHelper for T
 where
     T: DerefGroupFileConfiguration,
 {
+    fn get_group_name(&self) -> &str{
+        DerefGroupFileConfiguration::get_group_name(self)
+    }
     fn get_field(&self, key: &str) -> Option<&Value> {
         self.deref().get(key).and_then(|item| item.as_value())
     }
@@ -111,14 +129,21 @@ where
     }
 }
 
-impl<'a> From<&'a mut Table> for GroupFileConfigurationMut<'a> {
-    fn from(attr: &'a mut Table) -> Self {
-        Self { attr }
+impl <'a> GroupFileConfigurationMut<'a>{
+    pub fn new(attr: &'a mut Table, group_name: String) -> Self{
+        Self {
+            attr,
+            group_name
+        }
     }
 }
 
-impl<'a> From<&'a Table> for GroupFileConfiguration<'a> {
-    fn from(attr: &'a Table) -> Self {
-        Self { attr }
+
+impl <'a> GroupFileConfiguration<'a>{
+    pub fn new(attr: &'a Table, group_name: String) -> Self{
+        Self {
+            attr,
+            group_name
+        }
     }
 }

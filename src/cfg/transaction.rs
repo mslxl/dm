@@ -8,13 +8,13 @@ use crate::cfg::global::GlobalConfiguration;
 use crate::cfg::group::GroupConfiguration;
 use crate::error::Error;
 
-pub struct Transcation {
+pub struct Transaction {
     depository_path: PathBuf,
     global_cfg: GlobalConfiguration,
     group_cfg_map: RefCell<HashMap<String, GroupConfiguration>>,
 }
 
-impl Transcation {
+impl Transaction {
     const GENERAL_SECTION_KEY: &'static str = "general";
 
     /// Init transcation
@@ -23,6 +23,9 @@ impl Transcation {
     ///
     /// All changes will be applied after call `save()` function
     pub fn new(path: PathBuf) -> Self {
+        crate::lock::lock().unwrap();
+
+
         let global_cfg_path = path.join("dm.toml");
         let global_doc = if global_cfg_path.exists() {
             fs::read_to_string(&global_cfg_path)
@@ -179,5 +182,11 @@ impl Transcation {
         }
 
         Ok(())
+    }
+}
+
+impl Drop for Transaction{
+    fn drop(&mut self) {
+        crate::lock::unlock();
     }
 }

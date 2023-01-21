@@ -1,26 +1,56 @@
 pub mod file;
 
-use std::fmt::Debug;
+use std::{fs, path::PathBuf};
 
-pub struct StorageError {
-    message: String,
-}
+use crate::{
+    cfg::file::GroupFileConfigurationHelper, checker::check_configuration, env::get_depository_dir,
+    error::Error,
+};
 
-impl StorageError {
-    fn new(message: String) -> Self {
-        Self { message }
+use self::file::is_file_same;
+
+pub fn update_file(config: &dyn GroupFileConfigurationHelper) -> Result<(), Error> {
+    if config.is_link() {
+        return Ok(());
+    }
+    let depository_path = get_depository_dir().join(config.get_depository_path().unwrap());
+    if !depository_path.parent().unwrap().exists() {
+        fs::create_dir_all(depository_path.parent().unwrap()).unwrap();
+    }
+    let local_path = match config.get_local_path() {
+        None => Err(Error::err(format!(
+            "File {:?} does not exists",
+            depository_path
+        )))?,
+        Some(p) => PathBuf::from(p),
+    };
+    match fs::copy(local_path, depository_path) {
+        Ok(_) => Ok(()),
+        Err(err) => Err(Error::err(err.to_string())),
     }
 }
 
-impl <T> From<T> for StorageError where T:ToString {
-    fn from(err: T) -> Self {
-      Self::new(err.to_string())
+pub fn is_file_updatable(config: &dyn GroupFileConfigurationHelper) -> Result<bool, Error> {
+    if let Some(err) = check_configuration(config) {
+        return Err(err);
     }
-}
-
-impl Debug for StorageError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
+    if config.is_link() {
+        return Ok(true);
     }
-}
 
+    let depository_path = get_depository_dir().join(config.get_depository_path().unwrap());
+    let local_path = match config.get_local_path() {
+        None => Err(Error::err(format!(
+            "{0:?} has not been registered on {1}(missing {1} field)",
+            depository_path,
+            std::env::consts::OS
+        )))?,
+        Some(p) => PathBuf::from(p),
+    };
+
+    if !depository_path.exists() || !is_file_same(depository_path, local_path)? {
+        return Ok(true);
+    }
+
+    Ok(false)
+}
