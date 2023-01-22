@@ -17,11 +17,6 @@ pub fn get_xdg_config_dir() -> PathBuf {
     PathBuf::from(path)
 }
 
-pub fn get_cache_dir() -> PathBuf {
-    let path = env::var("XDG_CACHE_HOME").or(env::var("TEMP")).unwrap();
-    PathBuf::from(path)
-}
-
 pub fn get_depository_dir() -> PathBuf {
     let dir = get_xdg_data_dir();
     let dir = dir.join("dm");

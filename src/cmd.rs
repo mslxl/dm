@@ -26,12 +26,20 @@ pub enum Commands {
         soft_link: bool,
         #[arg(short, long, default_value_t = false)]
         encrypt: bool,
+        #[arg(short, long, default_value_t = false)]
+        compress: bool,
         files: Vec<String>,
     },
     AddDir {
         group: String,
         #[arg(short, long, default_value_t = false)]
         encrypt: bool,
+        #[arg(short, long, default_value_t = false)]
+        tar: bool,
+        #[arg(short, long, default_value_t = false)]
+        soft_link: bool,
+        #[arg(short, long, default_value_t = false)]
+        compress: bool,
         files: Vec<String>,
     },
     Remove {
@@ -66,14 +74,18 @@ impl Commands {
                 group,
                 encrypt,
                 files,
-            } => todo!(),
+                tar,
+                compress,
+                soft_link,
+            } => cmd_add_dir(group, encrypt, soft_link, tar, compress, files),
             Commands::AddFile {
                 group,
                 encrypt,
+                compress,
                 hard_link,
                 soft_link,
                 files,
-            } => cmd_add_file(group, encrypt, hard_link, soft_link, files),
+            } => cmd_add_file(group, compress, encrypt, hard_link, soft_link, files),
             Commands::Remove { files } => todo!(),
             Commands::Update { group } => cmd_update_group(group),
             Commands::Install { group } => todo!(),
@@ -115,6 +127,7 @@ fn cmd_info() {
 
 fn cmd_add_file(
     group: String,
+    compress: bool,
     encrypt: bool,
     hard_link: bool,
     soft_link: bool,
@@ -133,12 +146,28 @@ fn cmd_add_file(
             helper.set_encrypt(encrypt);
             helper.set_hard_link(hard_link);
             helper.set_soft_link(soft_link);
+            helper.set_compress(compress);
+            if compress {
+                helper
+                    .set_depository_path(&format!("{}.zst", helper.get_depository_path().unwrap()));
+            }
 
             update_file(&helper).unwrap();
         }
     }
 
     transcation.save().unwrap();
+}
+
+fn cmd_add_dir(
+    group: String,
+    encrypt: bool,
+    soft_link: bool,
+    tar: bool,
+    compress: bool,
+    files: Vec<String>,
+) {
+    todo!()
 }
 
 fn cmd_update_group(groups: Vec<String>) {
@@ -172,7 +201,7 @@ fn cmd_update_group(groups: Vec<String>) {
                         'G' => {
                             update_all_group = true;
                         }
-                        'Y' => {},
+                        'Y' => {}
                         _ => unreachable!(),
                     }
                 }

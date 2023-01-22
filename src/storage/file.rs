@@ -4,6 +4,8 @@ use std::{
     path::Path,
 };
 
+use sha2::{Sha256, Digest};
+
 use crate::error::Error;
 
 pub fn is_file_same<P: AsRef<Path>, Q: AsRef<Path>>(
@@ -40,4 +42,20 @@ pub fn is_file_same<P: AsRef<Path>, Q: AsRef<Path>>(
             return Ok(false);
         }
     }
+}
+
+pub fn hash_file<P:AsRef<Path>>(path: P) -> Result<String, Error>{
+  let mut hasher = Sha256::new();
+  let file = File::open(path).map_err(|v| Error::err(v.to_string()))?;
+  let mut reader = BufReader::new(file);
+  let mut buf = [0; 10000];
+  loop{
+    let n = reader.read(&mut buf).unwrap();
+    if n == 0 {
+      break;
+    }
+    hasher.update(&buf[0..n]);
+  };
+  let value = hasher.finalize();
+  Ok(format!("{:X}", value))
 }

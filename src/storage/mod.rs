@@ -1,13 +1,15 @@
 pub mod file;
 
-use std::{fs, path::PathBuf};
+use std::{fs::{self, File}, path::PathBuf};
+
+use sha2::{Digest, Sha256};
 
 use crate::{
-    cfg::file::GroupFileConfigurationHelper, checker::check_configuration, env::get_depository_dir,
-    error::Error,
+    cache::{self, insert_or_update_file_sha256}, cfg::file::GroupFileConfigurationHelper, checker::check_configuration,
+    env::get_depository_dir, error::Error,
 };
 
-use self::file::is_file_same;
+use self::file::{hash_file, is_file_same};
 
 pub fn update_file(config: &dyn GroupFileConfigurationHelper) -> Result<(), Error> {
     if config.is_link() {
@@ -24,6 +26,21 @@ pub fn update_file(config: &dyn GroupFileConfigurationHelper) -> Result<(), Erro
         )))?,
         Some(p) => PathBuf::from(p),
     };
+
+    let local_file_stream = File::open(&local_path).unwrap();
+
+
+    if config.is_compress() {
+        let sha256 = hash_file(&local_path).unwrap();
+        insert_or_update_file_sha256(&local_path, &sha256).unwrap();
+        let depository_path = get_depository_dir().join(config.get_depository_path().unwrap());
+        if !depository_path.parent().unwrap().exists() {
+            fs::create_dir_all(depository_path.parent().unwrap()).unwrap();
+        }
+        let depository_file_stream = File::create(depository_path).unwrap();
+        zstd::stream::copy_encode(local_file_stream, depository_file_stream, 13).unwrap();
+        return Ok(())
+    }
     match fs::copy(local_path, depository_path) {
         Ok(_) => Ok(()),
         Err(err) => Err(Error::err(err.to_string())),
@@ -48,9 +65,21 @@ pub fn is_file_updatable(config: &dyn GroupFileConfigurationHelper) -> Result<bo
         Some(p) => PathBuf::from(p),
     };
 
-    if !depository_path.exists() || !is_file_same(depository_path, local_path)? {
+    if !depository_path.exists() {
         return Ok(true);
     }
 
+    if config.is_compress() {
+        if let Some(hash) = cache::query_file_sha256(config.get_local_path().unwrap()) {
+            let current_hash = hash_file(config.get_local_path().unwrap())?;
+            return Ok(hash != current_hash);
+        } else {
+            return Ok(true);
+        }
+    }
+
+    if !is_file_same(depository_path, local_path)? {
+        return Ok(true);
+    }
     Ok(false)
 }

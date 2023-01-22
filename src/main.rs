@@ -2,6 +2,7 @@ mod ui;
 mod cfg;
 mod cmd;
 mod env;
+mod cache;
 mod lock;
 mod error;
 mod storage;
