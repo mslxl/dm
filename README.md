@@ -1,5 +1,7 @@
 # DM - Dotfiles Manager
 
+**WIP**
+
 [![Rust](https://github.com/mslxl/dm/actions/workflows/rust.yml/badge.svg)](https://github.com/mslxl/dm/actions/workflows/rust.yml)
 
 Yet another dotfiles manager written in Rust, it named `dm` simply.
