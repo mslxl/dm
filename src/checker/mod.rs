@@ -15,6 +15,14 @@ pub fn check_configuration(config: &dyn GroupFileConfigurationHelper) -> Option<
             );
         }
     }
+    if config.is_hard_link() && config.is_soft_link() {
+        return Some(
+            Error::err(String::from(
+                "Could not use hard link and soft link at same time",
+            ))
+            .suggest(String::from("Disable hard-link")),
+        );
+    }
 
     None
 }

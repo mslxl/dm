@@ -45,31 +45,34 @@ pub trait GroupFileConfigurationHelper {
     fn get_group_name(&self) -> &str;
     fn get_field(&self, key: &str) -> Option<&Value>;
 
-    fn get_local_path(&self) -> Option<&str>{
+    fn get_local_path(&self) -> Option<&str> {
         self.get_field(env::consts::OS)
             .and_then(|value| value.as_str())
     }
-    fn get_depository_path(&self) -> Option<&str>{
+    fn get_depository_path(&self) -> Option<&str> {
         self.get_field("location").and_then(|value| value.as_str())
     }
+    fn get_encrypt_recipient(&self) -> Option<&str> {
+        self.get_field("recipient").and_then(|value| value.as_str())
+    }
 
-    fn is_compress(&self) -> bool{
+    fn is_compress(&self) -> bool {
         self.get_field("compress")
             .and_then(|value| value.as_bool())
             .unwrap_or(false)
     }
-    fn is_encrypt(&self) -> bool{
+    fn is_encrypt(&self) -> bool {
         self.get_field("encrypt")
             .and_then(|value| value.as_bool())
             .unwrap_or(false)
     }
 
-    fn is_hard_link(&self) -> bool{
+    fn is_hard_link(&self) -> bool {
         self.get_field("hard_link")
             .and_then(|value| value.as_bool())
             .unwrap_or(false)
     }
-    fn is_soft_link(&self) -> bool{
+    fn is_soft_link(&self) -> bool {
         self.get_field("soft_link")
             .and_then(|value| value.as_bool())
             .unwrap_or(true)
@@ -93,23 +96,26 @@ where
 pub trait GroupFileConfigurationHelperMut: GroupFileConfigurationHelper {
     fn set_field<V: Into<Value>>(&mut self, key: &str, v: V);
 
-    fn set_local_path(&mut self, path: &str){
+    fn set_local_path(&mut self, path: &str) {
         self.set_field(env::consts::OS, path)
     }
-    fn set_depository_path(&mut self, path: &str){
+    fn set_depository_path(&mut self, path: &str) {
         self.set_field("location", path)
     }
 
-    fn set_encrypt(&mut self, v: bool){
+    fn set_encrypt(&mut self, v: bool) {
         self.set_field("encrypt", v)
     }
-    fn set_hard_link(&mut self, v: bool){
+    fn set_encrypt_recipient(&mut self, recipient: &str) {
+        self.set_field("recipient", recipient);
+    }
+    fn set_hard_link(&mut self, v: bool) {
         self.set_field("hard_link", v)
     }
-    fn set_soft_link(&mut self, v: bool){
+    fn set_soft_link(&mut self, v: bool) {
         self.set_field("soft_link", v)
     }
-    fn set_compress(&mut self, v:bool){
+    fn set_compress(&mut self, v: bool) {
         self.set_field("compress", v)
     }
 }

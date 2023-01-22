@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Stdio};
 
 use clap::Subcommand;
 
@@ -18,31 +18,33 @@ pub enum Commands {
         #[command(subcommand)]
         command: NewCommands,
     },
-    AddFile {
+    Add {
+        /// Target group name
         group: String,
+
         #[arg(short('l'), long, default_value_t = false)]
+        /// Create hard-link instead of copy, can't apply to floder
         hard_link: bool,
+
         #[arg(short('s'), long, default_value_t = false)]
+        /// Create soft-link instead of copy
         soft_link: bool,
+
+        #[arg(short, long, value_name="GPG recipient")]
+        /// Use specify recipient to encrypt file
+        encrypt: Option<String>,
+
         #[arg(short, long, default_value_t = false)]
-        encrypt: bool,
-        #[arg(short, long, default_value_t = false)]
+        /// Use zstd compress file
         compress: bool,
-        files: Vec<String>,
+        #[clap(required = true)]
+        file: Vec<String>,
+        #[arg(long)]
+        /// Exclude files in folder by glob expression
+        exclude: Vec<String>,
     },
-    AddDir {
-        group: String,
-        #[arg(short, long, default_value_t = false)]
-        encrypt: bool,
-        #[arg(short, long, default_value_t = false)]
-        tar: bool,
-        #[arg(short, long, default_value_t = false)]
-        soft_link: bool,
-        #[arg(short, long, default_value_t = false)]
-        compress: bool,
-        files: Vec<String>,
-    },
-    Remove {
+    Rm {
+        #[clap(required = true)]
         files: Vec<String>,
     },
     Update {
@@ -70,23 +72,18 @@ impl Commands {
     pub fn exec(self) {
         match self {
             Commands::New { command } => command.exec(),
-            Commands::AddDir {
-                group,
-                encrypt,
-                files,
-                tar,
-                compress,
-                soft_link,
-            } => cmd_add_dir(group, encrypt, soft_link, tar, compress, files),
-            Commands::AddFile {
+            Commands::Add {
                 group,
                 encrypt,
                 compress,
                 hard_link,
                 soft_link,
-                files,
-            } => cmd_add_file(group, compress, encrypt, hard_link, soft_link, files),
-            Commands::Remove { files } => todo!(),
+                file,
+                exclude,
+            } => cmd_add_file(
+                group, compress, encrypt, hard_link, soft_link, file, exclude,
+            ),
+            Commands::Rm { files } => todo!(),
             Commands::Update { group } => cmd_update_group(group),
             Commands::Install { group } => cmd_install(group),
             Commands::Push => todo!(),
@@ -141,10 +138,11 @@ fn cmd_install(groups: Vec<String>) {
 fn cmd_add_file(
     group: String,
     compress: bool,
-    encrypt: bool,
+    encrypt: Option<String>,
     hard_link: bool,
     soft_link: bool,
     files: Vec<String>,
+    exculde: Vec<String>,
 ) {
     let mut transcation = Transaction::new(get_depository_dir());
 
@@ -155,32 +153,41 @@ fn cmd_add_file(
             if !path.exists() {
                 panic!("File be must exists: {}", file);
             }
-            let mut helper = group.add_file(path).unwrap();
-            helper.set_encrypt(encrypt);
-            helper.set_hard_link(hard_link);
-            helper.set_soft_link(soft_link);
-            helper.set_compress(compress);
-            if compress {
-                helper
-                    .set_depository_path(&format!("{}.zst", helper.get_depository_path().unwrap()));
-            }
+            if path.is_file() {
+                if !exculde.is_empty() {
+                    panic!("Can't specify exculde option when adding file")
+                }
+                let mut helper = group.add_file(path).unwrap();
+                if let Some(ref recipient) = encrypt {
+                    helper.set_encrypt(true);
+                    helper.set_encrypt_recipient(recipient);
+                }else{
+                    helper.set_encrypt(false);
+                }
+                helper.set_hard_link(hard_link);
+                helper.set_soft_link(soft_link);
+                helper.set_compress(compress);
+                if compress {
+                    helper.set_depository_path(&format!(
+                        "{}.zst",
+                        helper.get_depository_path().unwrap()
+                    ));
+                }
+                if let Some(_) = encrypt {
+                    helper.set_depository_path(&format!(
+                        "{}.encrypt",
+                        helper.get_depository_path().unwrap()
+                    ));
+                }
 
-            update_file(&helper).unwrap();
+                update_file(&helper).unwrap();
+            } else {
+
+            }
         }
     }
 
     transcation.save().unwrap();
-}
-
-fn cmd_add_dir(
-    group: String,
-    encrypt: bool,
-    soft_link: bool,
-    tar: bool,
-    compress: bool,
-    files: Vec<String>,
-) {
-    todo!()
 }
 
 fn cmd_update_group(groups: Vec<String>) {
@@ -193,6 +200,11 @@ fn cmd_update_group(groups: Vec<String>) {
 
         let mut update_all_file = update_all_group;
         for f in files {
+            let path = PathBuf::from(f.get_local_path().unwrap());
+            if !path.exists(){
+                todo!("File has been deleted! Add remove from depository feature")
+            }
+
             if is_file_updatable(&f).unwrap() {
                 if !update_all_file {
                     match ui::get_ui().select(
@@ -227,6 +239,18 @@ fn cmd_update_group(groups: Vec<String>) {
 }
 
 fn cmd_health_check(group: Option<Vec<String>>) {
+    std::process::Command::new("git")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("Missing git program, try to install it or add it to PATH");
+    std::process::Command::new("gpg")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("Missing gpg program, try to install it or add it to PATH");
     let name = {
         let transcation = Transaction::new(get_depository_dir());
 
