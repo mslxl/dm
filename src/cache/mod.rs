@@ -8,7 +8,7 @@ use crate::{env::get_depository_dir, error::Error};
 static CACHE_DB: Lazy<Mutex<Connection>> = Lazy::new(|| {
     let path = get_depository_dir().join(".cache");
     if !path.exists() {
-        fs::create_dir_all(&path);
+        fs::create_dir_all(&path).unwrap();
     }
     let db_file = path.join("cache.db");
     let db = Connection::open(db_file).unwrap();

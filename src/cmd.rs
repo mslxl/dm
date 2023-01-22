@@ -8,7 +8,7 @@ use crate::{
         transaction::Transaction,
     },
     env::get_depository_dir,
-    storage::{is_file_updatable, update_file},
+    storage::{install_file, is_file_updatable, update_file},
     ui,
 };
 
@@ -88,7 +88,7 @@ impl Commands {
             } => cmd_add_file(group, compress, encrypt, hard_link, soft_link, files),
             Commands::Remove { files } => todo!(),
             Commands::Update { group } => cmd_update_group(group),
-            Commands::Install { group } => todo!(),
+            Commands::Install { group } => cmd_install(group),
             Commands::Push => todo!(),
             Commands::Pull => todo!(),
             Commands::Tui => todo!(),
@@ -125,6 +125,19 @@ fn cmd_info() {
     );
 }
 
+fn cmd_install(groups: Vec<String>) {
+    let transcation = Transaction::new(get_depository_dir());
+
+    for group in groups {
+        let config = transcation.group(group.clone());
+        match config {
+            None => panic!("Group {} not exists", group),
+            Some(config) => config.files().for_each(|file| {
+                install_file(&file).unwrap();
+            }),
+        }
+    }
+}
 fn cmd_add_file(
     group: String,
     compress: bool,
