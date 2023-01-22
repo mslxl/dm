@@ -2,38 +2,38 @@ pub mod file;
 
 use std::{fs::{self, File}, path::PathBuf};
 
-use sha2::{Digest, Sha256};
-
 use crate::{
     cache::{self, insert_or_update_file_sha256}, cfg::file::GroupFileConfigurationHelper, checker::check_configuration,
-    env::get_depository_dir, error::Error,
+    env::get_depository_dir, error::Error, platform::symlink_file_specify,
 };
 
 use self::file::{hash_file, is_file_same};
 
 pub fn update_file(config: &dyn GroupFileConfigurationHelper) -> Result<(), Error> {
-    if config.is_link() {
-        return Ok(());
-    }
     let depository_path = get_depository_dir().join(config.get_depository_path().unwrap());
-    if !depository_path.parent().unwrap().exists() {
-        fs::create_dir_all(depository_path.parent().unwrap()).unwrap();
-    }
     let local_path = match config.get_local_path() {
         None => Err(Error::err(format!(
-            "File {:?} does not exists",
+            "File local location {:?} does not register",
             depository_path
         )))?,
         Some(p) => PathBuf::from(p),
     };
+    if !depository_path.parent().unwrap().exists() {
+        fs::create_dir_all(depository_path.parent().unwrap()).unwrap();
+    }
 
+    if config.is_link() {
+        if !depository_path.exists(){
+            fs::rename(&local_path, &depository_path).unwrap();
+            symlink_file_specify(&depository_path, &local_path).unwrap();
+        }
+        return Ok(());
+    }
     let local_file_stream = File::open(&local_path).unwrap();
-
 
     if config.is_compress() {
         let sha256 = hash_file(&local_path).unwrap();
         insert_or_update_file_sha256(&local_path, &sha256).unwrap();
-        let depository_path = get_depository_dir().join(config.get_depository_path().unwrap());
         if !depository_path.parent().unwrap().exists() {
             fs::create_dir_all(depository_path.parent().unwrap()).unwrap();
         }
@@ -41,6 +41,7 @@ pub fn update_file(config: &dyn GroupFileConfigurationHelper) -> Result<(), Erro
         zstd::stream::copy_encode(local_file_stream, depository_file_stream, 13).unwrap();
         return Ok(())
     }
+
     match fs::copy(local_path, depository_path) {
         Ok(_) => Ok(()),
         Err(err) => Err(Error::err(err.to_string())),
