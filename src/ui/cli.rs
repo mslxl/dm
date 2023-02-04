@@ -21,7 +21,7 @@ impl Ui for Cli {
         print!("{}: ", msg);
       }
       let mut input = String::new();
-      std::io::stdout().flush();
+      std::io::stdout().flush().into_diagnostic()?;
       std::io::stdin().read_line(&mut input).into_diagnostic()?;
       Ok(input)
     }

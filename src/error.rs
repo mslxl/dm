@@ -16,6 +16,7 @@ pub enum DMError {
     },
 
     #[error("ProfileError({kind:?}): {msg}")]
+    #[diagnostic()]
     ProfileError {
         kind: ProfileErrorKind,
         msg: String,
@@ -33,5 +34,6 @@ pub enum DMError {
 #[derive(Debug)]
 pub enum ProfileErrorKind {
     DuplicateCreate,
-    NotExists
+    NotExists,
+    IlleagalOperation
 }

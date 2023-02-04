@@ -60,7 +60,7 @@ impl Transcation {
         &mut self.global
     }
 
-    fn commit(self) -> Result<()> {
+    fn commit(mut self) -> Result<()> {
         let global_toml_path = get_global_toml_path();
         std::fs::write(
             global_toml_path,

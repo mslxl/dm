@@ -12,6 +12,7 @@ error:
       profile:
         create: When creating profile
         checkout: When checkout another profile
+        delete: When delete profile
     config:
       save: When saving configuration
   transcation:
@@ -24,8 +25,19 @@ error:
       advice: Recomand to use hostname as profile name
     not_exists:
       msg: Profile %{name} not exists
+    delete_def:
+      msg: Can't delete default profile
+      advice: >-
+        Try to clean the profile by 'dm profile clean <NAME>' instead of
+        deleting it
+    delete_using:
+      msg: Can't delete current profile
+      advice: Checkout to other profile by 'dm profile use <NAME>' first
+    delete_not_exists:
+      msg: Can't delete a profile that didn't exists
   prompt:
     nan: Input is not a number
+    not_bool: Input is not a bool
 profile:
   about: Manage profiles
   create:
@@ -34,6 +46,11 @@ profile:
   use:
     help: Use specify profile
     arg_name: Profile name
+  delete:
+    help: Delete specify profile
+    arg_name: Profile name
+    arg_yes: Confirm the operation
+    confirm: Confirm to delete profile %{name}
 group:
   about: Manage groups
   create:
