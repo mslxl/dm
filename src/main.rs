@@ -1,11 +1,13 @@
+mod config;
 mod env;
 mod error;
 mod local;
 mod platform;
 mod task;
+mod ui;
 
-use clap::{arg, command, Command};
-use env::get_depository_dir;
+use clap::command;
+use env::{get_depository_dir, get_xdg_config_dir};
 use miette::Result;
 use rust_i18n::t;
 
@@ -13,7 +15,7 @@ rust_i18n::i18n!("locales");
 
 fn long_about() -> String {
     format!(
-        "{desc}\n\n{locales_tip}\n{depository_path}",
+        "{desc}\n\n{locales_tip}\n{depository_path}\n{config_path}",
         desc = t!("app.desc"),
         locales_tip = t!(
             "app.avaliable_locales",
@@ -22,6 +24,10 @@ fn long_about() -> String {
         depository_path = t!(
             "app.depository_path",
             path = get_depository_dir().to_str().unwrap()
+        ),
+        config_path = t!(
+            "app.configuration_path",
+            path = get_xdg_config_dir().join("dm.toml").to_str().unwrap()
         )
     )
 }

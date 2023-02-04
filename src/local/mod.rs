@@ -41,17 +41,14 @@ impl Transcation {
     }
 
     fn start() -> Result<Self> {
-        Self::lock().wrap_err(t!("error.ctx.transcation.init"))?;
+        Self::lock()?;
         let global_toml_path = get_global_toml_path();
         let global = if !global_toml_path.exists() {
             TomlGlobal::default()
         } else {
-            let toml = std::fs::read_to_string(global_toml_path)
-                .into_diagnostic()
-                .wrap_err(t!("error.ctx.transcation.init"))?;
+            let toml = std::fs::read_to_string(global_toml_path).into_diagnostic()?;
             toml_edit::de::from_str(&toml)
-                .into_diagnostic()
-                .wrap_err(t!("error.ctx.transcation.init"))?
+                .into_diagnostic()?
         };
         Ok(Self {
             group: HashMap::new(),
@@ -68,13 +65,11 @@ impl Transcation {
         std::fs::write(
             global_toml_path,
             toml_edit::ser::to_string_pretty(&self.global)
-                .into_diagnostic()
-                .wrap_err(t!("error.ctx.transcation.commit"))?,
+                .into_diagnostic()?
         )
-        .into_diagnostic()
-        .wrap_err(t!("error.ctx.transcation.commit"))?;
+        .into_diagnostic()?;
 
-        Self::unlock().wrap_err(t!("error.ctx.transcation.commit"))?;
+        Self::unlock()?;
         Ok(())
     }
 }
@@ -92,14 +87,14 @@ struct TomlGlobalProfileEntry {
 }
 
 #[derive(Serialize, Deserialize)]
-struct TomlGlobalGeneral {
+struct TomlGlobalRegistery {
     profile: Vec<TomlGlobalProfileEntry>,
     group: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct TomlGlobal {
-    general: TomlGlobalGeneral,
+    registery: TomlGlobalRegistery,
 }
 
 impl TomlGlobalProfileEntry {
@@ -110,7 +105,7 @@ impl TomlGlobalProfileEntry {
         }
     }
 }
-impl Default for TomlGlobalGeneral {
+impl Default for TomlGlobalRegistery {
     fn default() -> Self {
         Self {
             profile: vec![TomlGlobalProfileEntry::new(String::from("default"))],
@@ -122,7 +117,7 @@ impl Default for TomlGlobalGeneral {
 impl Default for TomlGlobal {
     fn default() -> Self {
         Self {
-            general: TomlGlobalGeneral::default(),
+            registery: TomlGlobalRegistery::default(),
         }
     }
 }

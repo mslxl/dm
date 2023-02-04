@@ -1,7 +1,6 @@
 use std::io;
 use std::os;
 use std::path::Path;
-use std::path::PathBuf;
 
 #[cfg(target_family = "windows")]
 pub fn symlink_file_specify<P: AsRef<Path>, Q: AsRef<Path>>(
