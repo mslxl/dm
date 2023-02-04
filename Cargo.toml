@@ -1,6 +1,7 @@
 [package]
 name = "dm"
 version = "0.1.0"
+authors = ["mslxl <i@mslxl.com>"]
 edition = "2021"
 description = "Yet another powerful dotfiles manager written in Rust"
 license = "agpl3"
@@ -8,16 +9,28 @@ license = "agpl3"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# git2 = "0.14"
 tui = "0.19.0"
-clap = { version = "4.0.29", features = ["derive"] }
+
+rust-i18n = "1.1.1"
 wild = "2.1.0"
-tokio = "1.23.0"
-toml_edit = "0.17.1"
-once_cell = "1.16.0"
-termcolor = "1.2.0"
+clap = { version = "4.0.29", features = ["cargo"]}
+
+owo-colors = "3.5.0"
+thiserror = "1.0.38"
+miette = { version = "5.5.0", features = ["fancy"] }
+
 zstd = "0.12.2"
 tar = "0.4.38"
-rusqlite = { version = "0.28.0", features = ["bundled"] }
 sha2 = "0.10.6"
 dunce = "1.0.3"
+
+serde = "1.0.152"
+toml_edit = {version = "0.17.1", features=["serde"]}
+tokio = {version = "1.23.0", features = ["full"]}
+rusqlite = { version = "0.28.0", features = ["bundled"] }
+
+once_cell = "1.16.0"
+
+[package.metadata.i18n]
+available-locales = ["en", "zh-CN"]
+default-locale = "en"

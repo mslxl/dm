@@ -1,0 +1,38 @@
+app:
+  desc: Yet another powerful dotfiles manager written in Rust
+  avaliable_locales: 'Avaliable locales: %{locales}'
+  depository_path: 'Depository path: %{path}'
+
+error:
+  ctx:
+    transcation:
+      init: When initialize transcation
+      commit: When commit changes
+    cmd:
+      profile:
+        create: When creating profile
+  transcation:
+    lock: 
+      msg: The depository has been locked!
+      advice: 'If there is no dm instance is running, delete %{lock} file by hand'
+
+
+
+profile:
+  about: Manage profiles
+  create: 
+    help: Create new profile
+    arg_name: Profile name
+  use: Use specify profile
+
+
+group:
+  about: Manage groups
+  create:
+    help: Create new group
+    arg_name: Group name
+
+lock:
+  content: 
+    DO NOT DELETE THIS FILE MAUNALLY!
+    This file is automatically created by dm
