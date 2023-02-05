@@ -1,5 +1,5 @@
 use clap::{arg, ArgAction, ArgMatches, Command};
-use miette::{Context, ErrReport, IntoDiagnostic, Result};
+use miette::{Context, IntoDiagnostic, Result};
 use rust_i18n::t;
 
 use crate::{
@@ -38,6 +38,27 @@ pub fn args() -> Command {
         )
 }
 
+async fn exec(matches: &ArgMatches) -> Result<()> {
+    if let Some(matches) = matches.subcommand_matches("create") {
+        create(matches)
+            .await
+            .wrap_err(t!("error.ctx.cmd.profile.create"))
+    } else if let Some(matches) = matches.subcommand_matches("use") {
+        use_profile(matches)
+            .await
+            .wrap_err(t!("error.ctx.cmd.profile.checkout"))
+    } else if let Some(matches) = matches.subcommand_matches("delete") {
+        delete(matches)
+            .await
+            .wrap_err(t!("error.ctx.cmd.profile.delete"))
+    } else {
+        Ok(())
+    }
+}
+
+pub async fn try_match(matches: &ArgMatches) -> Option<Result<()>> {
+    Some(exec(matches.subcommand_matches("profile")?).await)
+}
 async fn create(matches: &ArgMatches) -> Result<()> {
     let mut transaction = Transaction::start().wrap_err(t!("error.ctx.transcation.init"))?;
 
@@ -72,9 +93,9 @@ async fn use_profile(matches: &ArgMatches) -> Result<()> {
         .find(|entry| entry.name == name)
         .is_some()
     {
-        let mut config = config::config.lock().await;
-        config.using_profile = name;
-        config.save().wrap_err(t!("error.ctx.config.save"))
+        let mut config_guard = config::CONFIG.lock().await;
+        config_guard.using_profile = name;
+        config_guard.save().wrap_err(t!("error.ctx.config.save"))
     } else {
         Err(DMError::ProfileError {
             kind: ProfileErrorKind::NotExists,
@@ -97,7 +118,7 @@ async fn delete(matches: &ArgMatches) -> Result<()> {
         })
         .into_diagnostic()?;
     }
-    if config::config.lock().await.using_profile == name {
+    if config::CONFIG.lock().await.using_profile == name {
         Err(DMError::ProfileError {
             kind: ProfileErrorKind::IlleagalOperation,
             msg: t!("error.profile.delete_using.msg"),
@@ -129,26 +150,4 @@ async fn delete(matches: &ArgMatches) -> Result<()> {
         })
         .into_diagnostic()
     }
-}
-
-async fn exec(matches: &ArgMatches) -> Result<()> {
-    if let Some(matches) = matches.subcommand_matches("create") {
-        create(matches)
-            .await
-            .wrap_err(t!("error.ctx.cmd.profile.create"))
-    } else if let Some(matches) = matches.subcommand_matches("use") {
-        use_profile(matches)
-            .await
-            .wrap_err(t!("error.ctx.cmd.profile.checkout"))
-    } else if let Some(matches) = matches.subcommand_matches("delete") {
-        delete(matches)
-            .await
-            .wrap_err(t!("error.ctx.cmd.profile.delete"))
-    } else {
-        Ok(())
-    }
-}
-
-pub async fn try_match(matches: &ArgMatches) -> Option<Result<()>> {
-    Some(exec(matches.subcommand_matches("profile")?).await)
 }

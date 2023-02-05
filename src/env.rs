@@ -1,36 +1,46 @@
-use std::path::{PathBuf, Path};
+use directories::BaseDirs;
+use miette::{IntoDiagnostic, Result};
+use rust_i18n::t;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-pub fn get_xdg_data_dir() -> PathBuf {
-    let path = env::var("DM_DATA_HOME")
-        .or(env::var("XDG_DATA_HOME"))
-        .or(env::var("APPDATA"))
-        .unwrap();
-    PathBuf::from(path)
+use crate::error::DMError;
+
+fn env_option_to_result<T>(result: Option<T>) -> Result<T> {
+    result
+        .ok_or(DMError::EnvError {
+            msg: t!("error.env.dir_not_certain.msg"),
+            advice: Some(t!("error.env.dir_not_certain.advice")),
+        })
+        .into_diagnostic()
 }
 
-pub fn get_xdg_config_dir() -> PathBuf {
-    let path = env::var("DM_CONFIG_HOME")
-        .or(env::var("XDG_CONFIG_HOME"))
-        .or(env::var("LOCALAPPDATA"))
-        .unwrap();
-    PathBuf::from(path)
-}
-
-pub fn get_depository_dir() -> PathBuf {
-    let dir = get_xdg_data_dir();
-    let dir = dir.join("dm");
-    if !dir.exists() {
-        fs::create_dir(&dir).expect("Can't create depository directory");
+pub fn get_app_data_dir() -> Result<PathBuf> {
+    let path = env::var("DM_DATA")
+        .ok()
+        .map(|p| PathBuf::from(p))
+        .or(BaseDirs::new().map(|q| q.data_local_dir().to_path_buf().join("dm")));
+    if let Some(path) = &path{
+        if !path.exists() {
+            fs::create_dir_all(path).into_diagnostic()?;
+        }
     }
-    dir
+    env_option_to_result(path)
 }
 
-pub fn get_group_dir(group_name: &str) -> PathBuf {
-    get_depository_dir().join(format!("{}/{}", "depository", group_name))
+pub fn get_app_config_file() -> Result<PathBuf> {
+    let path = env::var("DM_CONFIG_FILE")
+        .ok()
+        .map(|p| PathBuf::from(p))
+        .or(BaseDirs::new().map(|q| q.config_dir().to_path_buf().join("dm.toml")));
+    env_option_to_result(path)
 }
 
-pub fn to_depositiory_path<P: AsRef<Path>>(path: P) -> PathBuf{
+pub fn get_group_dir(group_name: &str) -> Result<PathBuf> {
+    Ok(get_app_data_dir()?.join(format!("{}/{}", "depository", group_name)))
+}
+
+pub fn to_depositiory_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let path = dunce::canonicalize(path).unwrap();
     let path = path.to_str().unwrap();
     if path.starts_with("/") {
@@ -40,7 +50,7 @@ pub fn to_depositiory_path<P: AsRef<Path>>(path: P) -> PathBuf{
         // MSDOS path
         let filepath = &path[4..];
         let (disk, path) = filepath.split_once(":\\").unwrap();
-        PathBuf::from(format!("{}\\{}",disk, path))
+        PathBuf::from(format!("{}\\{}", disk, path))
     } else {
         panic!("Unsupported filesystem")
     }

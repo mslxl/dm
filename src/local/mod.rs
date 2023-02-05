@@ -1,17 +1,16 @@
 use miette::Result;
-use miette::{Context, IntoDiagnostic};
-use owo_colors::colors::xterm::Brown;
-use owo_colors::OwoColorize;
+use miette::IntoDiagnostic;
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell, RefMut};
-use std::ops::Deref;
 use std::{collections::HashMap, path::PathBuf};
 
+use crate::env::get_app_data_dir;
 use crate::env::get_group_dir;
 use crate::error::GroupErrorKind;
-use crate::{env::get_depository_dir, error::DMError};
+use crate::error::DMError;
 
+pub mod file;
 pub mod group;
 pub mod profile;
 
@@ -22,7 +21,7 @@ struct Transaction {
 
 impl Transaction {
     fn lock() -> Result<()> {
-        let lock_file = get_depository_dir().join(".lock");
+        let lock_file = get_app_data_dir()?.join(".lock");
         if lock_file.exists() {
             Err(DMError::LockError {
                 msg: t!("error.transcation.lock.msg"),
@@ -39,7 +38,7 @@ impl Transaction {
     }
 
     fn unlock() -> Result<()> {
-        let lock_file = get_depository_dir().join(".lock");
+        let lock_file = get_app_data_dir()?.join(".lock");
         if lock_file.exists() {
             std::fs::remove_file(lock_file).into_diagnostic()?;
         }
@@ -48,7 +47,7 @@ impl Transaction {
 
     pub fn start() -> Result<Self> {
         Self::lock()?;
-        let global_toml_path = get_global_toml_path();
+        let global_toml_path = get_global_toml_path()?;
         let global = if !global_toml_path.exists() {
             TomlGlobal::default()
         } else {
@@ -70,7 +69,7 @@ impl Transaction {
     }
 
     fn load_group_toml(&self, name: String) -> Result<()> {
-        let dir = get_group_dir(&name);
+        let dir = get_group_dir(&name)?;
         if !dir.exists() {
             self.group
                 .borrow_mut()
@@ -135,7 +134,7 @@ impl Transaction {
     }
 
     pub fn commit(mut self) -> Result<()> {
-        let global_toml_path = get_global_toml_path();
+        let global_toml_path = get_global_toml_path()?;
         // Save global configuration
         std::fs::write(
             global_toml_path,
@@ -145,7 +144,7 @@ impl Transaction {
         // Save group manifest
         for (name, v) in self.group.borrow().iter() {
             let value = toml_edit::ser::to_string_pretty(v).into_diagnostic()?;
-            let dir = get_group_dir(name);
+            let dir = get_group_dir(name)?;
             if !dir.exists() {
                 std::fs::create_dir_all(&dir).into_diagnostic()?;
             }
@@ -205,8 +204,8 @@ impl Default for TomlGlobal {
     }
 }
 
-fn get_global_toml_path() -> PathBuf {
-    get_depository_dir().join("dm.toml")
+fn get_global_toml_path() -> Result<PathBuf> {
+    Ok(get_app_data_dir()?.join("dm.toml"))
 }
 
 #[derive(Serialize, Deserialize)]

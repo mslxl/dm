@@ -15,8 +15,13 @@ error:
         delete: When delete profile
       group:
         create: When creating group
+      add: When adding file
     config:
       save: When saving configuration
+  env:
+    dir_not_certain:
+      msg: DM can't decide to use which directory should be use for store data
+      advice: Assign environment var 'DM_CONFIG_FILE' and 'DM_DATA' to specify paths
   transcation:
     lock:
       msg: The depository has been locked!
@@ -41,6 +46,8 @@ error:
   group:
     duplicate:
       msg: Group named '%{name}' is already exists
+    not_exists:
+      msg: Group '%{name}' is not exists
 profile:
   about: Manage profiles
   create:
@@ -60,5 +67,13 @@ group:
     help: Create new group
     arg_name: Group name
     arg_nouse: Create the group but not add it to current profile
+file:
+  add:
+    help: Add file or directory to specify group
+    arg_name: Group name
+    arg_path: Path to file/directory
+    arg_compress: Enable zstd compress this
+    arg_encrypt: Enable encrypt
+    arg_manual_install: Use a custom script to install manually
 lock:
   content: DO NOT DELETE THIS FILE MAUNALLY! This file is automatically created by dm

@@ -31,7 +31,13 @@ pub enum DMError {
         #[help]
         advice: Option<String>,
     },
-
+    #[error("EnvError: {msg}")]
+    #[diagnostic()]
+    EnvError {
+        msg: String,
+        #[help]
+        advice: Option<String>,
+    },
     #[error(transparent)]
     #[diagnostic()]
     TomlSerError(#[from] toml_edit::ser::Error),
@@ -44,10 +50,11 @@ pub enum DMError {
 pub enum ProfileErrorKind {
     DuplicateCreate,
     NotExists,
-    IlleagalOperation
+    IlleagalOperation,
 }
 
 #[derive(Debug)]
 pub enum GroupErrorKind {
     DuplicateCreate,
+    NotExists,
 }
