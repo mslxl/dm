@@ -8,7 +8,7 @@ use crate::{
     ui::ui,
 };
 
-use super::{TomlGlobalProfileEntry, Transcation};
+use super::{TomlGlobalProfileEntry, Transaction};
 
 pub fn args() -> Command {
     Command::new("profile")
@@ -39,7 +39,7 @@ pub fn args() -> Command {
 }
 
 async fn create(matches: &ArgMatches) -> Result<()> {
-    let mut transaction = Transcation::start().wrap_err(t!("error.ctx.transcation.init"))?;
+    let mut transaction = Transaction::start().wrap_err(t!("error.ctx.transcation.init"))?;
 
     let name = matches.get_one::<String>("NAME").unwrap().clone();
     let profile_list = &mut transaction.global.registery.profile;
@@ -63,7 +63,7 @@ async fn create(matches: &ArgMatches) -> Result<()> {
 
 async fn use_profile(matches: &ArgMatches) -> Result<()> {
     let name = matches.get_one::<String>("NAME").unwrap().clone();
-    let transaction = Transcation::start().wrap_err(t!("error.ctx.transcation.init"))?;
+    let transaction = Transaction::start().wrap_err(t!("error.ctx.transcation.init"))?;
     if transaction
         .global
         .registery
@@ -105,7 +105,7 @@ async fn delete(matches: &ArgMatches) -> Result<()> {
         })
         .into_diagnostic()?;
     }
-    let mut transaction = Transcation::start().wrap_err(t!("error.ctx.transcation.init"))?;
+    let mut transaction = Transaction::start().wrap_err(t!("error.ctx.transcation.init"))?;
     if let Some(idx) = transaction
         .global
         .registery

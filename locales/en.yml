@@ -13,6 +13,8 @@ error:
         create: When creating profile
         checkout: When checkout another profile
         delete: When delete profile
+      group:
+        create: When creating group
     config:
       save: When saving configuration
   transcation:
@@ -27,9 +29,7 @@ error:
       msg: Profile %{name} not exists
     delete_def:
       msg: Can't delete default profile
-      advice: >-
-        Try to clean the profile by 'dm profile clean <NAME>' instead of
-        deleting it
+      advice: 'Remove all groups in configuration instead of delete profile '
     delete_using:
       msg: Can't delete current profile
       advice: Checkout to other profile by 'dm profile use <NAME>' first
@@ -38,6 +38,9 @@ error:
   prompt:
     nan: Input is not a number
     not_bool: Input is not a bool
+  group:
+    duplicate:
+      msg: Group named '%{name}' is already exists
 profile:
   about: Manage profiles
   create:
@@ -56,5 +59,6 @@ group:
   create:
     help: Create new group
     arg_name: Group name
+    arg_nouse: Create the group but not add it to current profile
 lock:
   content: DO NOT DELETE THIS FILE MAUNALLY! This file is automatically created by dm

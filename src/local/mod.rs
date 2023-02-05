@@ -1,20 +1,26 @@
 use miette::Result;
 use miette::{Context, IntoDiagnostic};
+use owo_colors::colors::xterm::Brown;
+use owo_colors::OwoColorize;
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
+use std::cell::{Ref, RefCell, RefMut};
+use std::ops::Deref;
 use std::{collections::HashMap, path::PathBuf};
 
+use crate::env::get_group_dir;
+use crate::error::GroupErrorKind;
 use crate::{env::get_depository_dir, error::DMError};
 
 pub mod group;
 pub mod profile;
 
-struct Transcation {
-    group: HashMap<String, TomlGroup>,
+struct Transaction {
+    group: RefCell<HashMap<String, TomlGroup>>,
     global: TomlGlobal,
 }
 
-impl Transcation {
+impl Transaction {
     fn lock() -> Result<()> {
         let lock_file = get_depository_dir().join(".lock");
         if lock_file.exists() {
@@ -40,41 +46,118 @@ impl Transcation {
         Ok(())
     }
 
-    fn start() -> Result<Self> {
+    pub fn start() -> Result<Self> {
         Self::lock()?;
         let global_toml_path = get_global_toml_path();
         let global = if !global_toml_path.exists() {
             TomlGlobal::default()
         } else {
             let toml = std::fs::read_to_string(global_toml_path).into_diagnostic()?;
-            toml_edit::de::from_str(&toml)
-                .into_diagnostic()?
+            toml_edit::de::from_str(&toml).into_diagnostic()?
         };
         Ok(Self {
-            group: HashMap::new(),
+            group: RefCell::new(HashMap::new()),
             global,
         })
     }
 
-    fn global(&mut self) -> &mut TomlGlobal {
+    pub fn global(&self) -> &TomlGlobal {
+        &self.global
+    }
+
+    pub fn global_mut(&mut self) -> &mut TomlGlobal {
         &mut self.global
     }
 
-    fn commit(mut self) -> Result<()> {
+    fn load_group_toml(&self, name: String) -> Result<()> {
+        let dir = get_group_dir(&name);
+        if !dir.exists() {
+            self.group
+                .borrow_mut()
+                .insert(name.clone(), TomlGroup::new(name));
+        } else {
+            let file = dir.join("manifest.toml");
+            if file.exists() {
+                let ins = toml_edit::de::from_str::<TomlGroup>(
+                    &std::fs::read_to_string(file).into_diagnostic()?,
+                )
+                .into_diagnostic()?;
+                self.group.borrow_mut().insert(name, ins);
+            } else {
+                self.group
+                    .borrow_mut()
+                    .insert(name.clone(), TomlGroup::new(name));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn group(&self, name: &str) -> Result<Option<Ref<TomlGroup>>> {
+        let borrow = self.group.borrow();
+        if !borrow.contains_key(name) {
+            self.load_group_toml(name.to_string())?;
+        }
+
+        if !borrow.contains_key(name) {
+            return Ok(None);
+        }
+        let r = Ref::map(borrow, |map| map.get(name).unwrap());
+        Ok(Some(r))
+    }
+
+    pub fn group_mut(&mut self, name: &str) -> Result<Option<RefMut<TomlGroup>>> {
+        let borrow = self.group.borrow_mut();
+        if !borrow.contains_key(name) {
+            self.load_group_toml(name.to_string())?;
+        }
+
+        if !borrow.contains_key(name) {
+            return Ok(None);
+        }
+        let r = RefMut::map(borrow, |map| map.get_mut(name).unwrap());
+        Ok(Some(r))
+    }
+
+    pub fn create_group(&mut self, name: &str) -> Result<RefMut<TomlGroup>> {
+        let mut borrow = self.group.borrow_mut();
+        if borrow.contains_key(name) || self.global.registery.group.contains(&name.to_string()) {
+            Err(DMError::GroupError {
+                kind: GroupErrorKind::DuplicateCreate,
+                msg: t!("error.group.duplicate.msg", name = name),
+                advice: None,
+            })
+            .into_diagnostic()?;
+        }
+        borrow.insert(name.to_string(), TomlGroup::new(name.to_string()));
+        self.global.registery.group.push(name.to_string());
+
+        Ok(RefMut::map(borrow, |map| map.get_mut(name).unwrap()))
+    }
+
+    pub fn commit(mut self) -> Result<()> {
         let global_toml_path = get_global_toml_path();
+        // Save global configuration
         std::fs::write(
             global_toml_path,
-            toml_edit::ser::to_string_pretty(&self.global)
-                .into_diagnostic()?
+            toml_edit::ser::to_string_pretty(&self.global).into_diagnostic()?,
         )
         .into_diagnostic()?;
-
+        // Save group manifest
+        for (name, v) in self.group.borrow().iter() {
+            let value = toml_edit::ser::to_string_pretty(v).into_diagnostic()?;
+            let dir = get_group_dir(name);
+            if !dir.exists() {
+                std::fs::create_dir_all(&dir).into_diagnostic()?;
+            }
+            let manifest_path = dir.join("manifest.toml");
+            std::fs::write(manifest_path, value).into_diagnostic()?;
+        }
         Self::unlock()?;
         Ok(())
     }
 }
 
-impl Drop for Transcation {
+impl Drop for Transaction {
     fn drop(&mut self) {
         Self::unlock().unwrap();
     }
@@ -127,4 +210,24 @@ fn get_global_toml_path() -> PathBuf {
 }
 
 #[derive(Serialize, Deserialize)]
-struct TomlGroup {}
+struct TomlFileEntry {
+    path: String,
+    install: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TomlGroup {
+    name: String,
+    description: Option<String>,
+    files: Vec<TomlFileEntry>,
+}
+
+impl TomlGroup {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            description: None,
+            files: vec![],
+        }
+    }
+}

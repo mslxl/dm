@@ -26,6 +26,9 @@ pub fn get_depository_dir() -> PathBuf {
     dir
 }
 
+pub fn get_group_dir(group_name: &str) -> PathBuf {
+    get_depository_dir().join(format!("{}/{}", "depository", group_name))
+}
 
 pub fn to_depositiory_path<P: AsRef<Path>>(path: P) -> PathBuf{
     let path = dunce::canonicalize(path).unwrap();

@@ -23,6 +23,15 @@ pub enum DMError {
         #[help]
         advice: Option<String>,
     },
+    #[error("GroupError({kind:?}): {msg}")]
+    #[diagnostic()]
+    GroupError {
+        kind: GroupErrorKind,
+        msg: String,
+        #[help]
+        advice: Option<String>,
+    },
+
     #[error(transparent)]
     #[diagnostic()]
     TomlSerError(#[from] toml_edit::ser::Error),
@@ -36,4 +45,9 @@ pub enum ProfileErrorKind {
     DuplicateCreate,
     NotExists,
     IlleagalOperation
+}
+
+#[derive(Debug)]
+pub enum GroupErrorKind {
+    DuplicateCreate,
 }
