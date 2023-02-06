@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::{arg, value_parser, ArgAction, ArgMatches, Command};
 use miette::{Context, IntoDiagnostic, Result};
@@ -24,6 +24,16 @@ pub fn args_add() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .arg(
+            arg!(-s - -symbolic)
+                .help(t!("file.add.arg_symbolic_link"))
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            arg!(-l - -link)
+                .help(t!("file.add.arg_link"))
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             arg!(-e - -encrypt)
                 .help(t!("file.add.arg_encrypt"))
                 .action(ArgAction::SetTrue),
@@ -31,6 +41,11 @@ pub fn args_add() -> Command {
         .arg(
             arg!(-m - -manual)
                 .help(t!("file.add.arg_manual_install"))
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            arg!(-r - -recongize)
+                .help(t!("file.add.arg_recongize"))
                 .action(ArgAction::SetTrue),
         )
 }
@@ -47,6 +62,7 @@ async fn exec_add(matches: &ArgMatches) -> Result<()> {
             advice: None,
         })
         .into_diagnostic()?;
+
     Ok(())
 }
 

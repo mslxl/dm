@@ -3,6 +3,8 @@ app:
   avaliable_locales: 'Avaliable locales: %{locales}'
   depository_path: 'Depository path: %{path}'
   configuration_path: 'Configuration file: %{path}'
+  info:
+    pssl: 'Platform-specific standard location: %{loc}'
 error:
   ctx:
     transcation:
@@ -16,12 +18,15 @@ error:
       group:
         create: When creating group
       add: When adding file
+      info: When get enviroment infomation
     config:
       save: When saving configuration
   env:
     dir_not_certain:
       msg: DM can't decide to use which directory should be use for store data
       advice: Assign environment var 'DM_CONFIG_FILE' and 'DM_DATA' to specify paths
+    get_platform: When obtain platform specific standard dir
+    gen_env: When obtain environment variable
   transcation:
     lock:
       msg: The depository has been locked!
@@ -72,8 +77,13 @@ file:
     help: Add file or directory to specify group
     arg_name: Group name
     arg_path: Path to file/directory
-    arg_compress: Enable zstd compress this
+    arg_compress: Enable zstd compress
     arg_encrypt: Enable encrypt
     arg_manual_install: Use a custom script to install manually
+    arg_symbolic_link: Use symbolic link
+    arg_link: Create link instead of copying file, default use hard-link
+    arg_recongize: Recongize specifial path according to platform and environment variable
 lock:
   content: DO NOT DELETE THIS FILE MAUNALLY! This file is automatically created by dm
+info:
+  help: Print enviroment information

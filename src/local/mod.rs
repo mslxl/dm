@@ -1,5 +1,5 @@
-use miette::Result;
 use miette::IntoDiagnostic;
+use miette::Result;
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell, RefMut};
@@ -7,8 +7,8 @@ use std::{collections::HashMap, path::PathBuf};
 
 use crate::env::get_app_data_dir;
 use crate::env::get_group_dir;
-use crate::error::GroupErrorKind;
 use crate::error::DMError;
+use crate::error::GroupErrorKind;
 
 pub mod file;
 pub mod group;
@@ -209,16 +209,30 @@ fn get_global_toml_path() -> Result<PathBuf> {
 }
 
 #[derive(Serialize, Deserialize)]
-struct TomlFileEntry {
-    path: String,
-    install: HashMap<String, String>,
+enum DMPath {
+    Normal(String),
+    Dynamic(Vec<String>)
+}
+
+#[derive(Serialize, Deserialize)]
+enum TomlItemEntry {
+    File {
+        path: String,
+        manaul: bool,
+        install: HashMap<String, DMPath>,
+    },
+    Dir {
+        path: String,
+        manaul: bool,
+        install: HashMap<String, DMPath>,
+    },
 }
 
 #[derive(Serialize, Deserialize)]
 struct TomlGroup {
     name: String,
     description: Option<String>,
-    files: Vec<TomlFileEntry>,
+    files: Vec<TomlItemEntry>,
 }
 
 impl TomlGroup {
