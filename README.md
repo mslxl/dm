@@ -11,16 +11,34 @@ DM is integral with Github and WebDAV etc. web storage service, it can automatic
 
 DM manage dotfiles, but it's not manage file directly, DM will manage group that composed by many files. It would proivde users a handy way to add, edit or just remove their configuration from DM.
 
-
 ## Building
 
 1. Setup rust, you can follow [this instructions](https://rustup.rs/)
 2. Clone this repository
-```
-git clone git@github.com:mslxl/dm.git
+
+```bash
+$git clone git@github.com:mslxl/dm.git
 ```
 3. Build
+
+``` bash
+$cargo build --release
 ```
-cargo build --release
-```
+
 4. Find the executable in `target/release/dm.exe`
+
+## Features
+
+- [X] Manage profile
+- [ ] Manage files by group
+- [ ] Basic file manage
+- [ ] Basic dir manage
+- [ ] Install file cross operation system
+- [ ] Recongize special file
+- [ ] Encrypt by gnuPGP
+- [ ] Symbolic link
+- [ ] Compress
+- [ ] Hooks script
+- [ ] Manual install script
+- [ ] Template
+- [ ] TUI
