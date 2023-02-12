@@ -1,6 +1,5 @@
-use miette::{Context, Result};
+use miette::Result;
 
-use clap::{ArgMatches, Command};
 use rust_i18n::t;
 
 use crate::{
@@ -8,24 +7,8 @@ use crate::{
     env::{self, get_app_config_file, get_app_data_dir},
 };
 
-pub fn args() -> Command {
-    Command::new("info").alias("i").about(t!("info.help"))
-}
 
-async fn exec(_matches: &ArgMatches) -> Result<()> {
-    println!("{}", all_info()?);
-    Ok(())
-}
-
-pub async fn try_match(matches: &ArgMatches) -> Option<Result<()>> {
-    Some(
-        exec(matches.subcommand_matches("info")?)
-            .await
-            .wrap_err(t!("error.ctx.cmd.info")),
-    )
-}
-
-fn all_info() -> Result<String> {
+pub fn all_info() -> Result<String> {
     Ok(format!(
         "{locales_tip}\n{depository_path}\n{config_path}\n{pssl}",
         locales_tip = t!(

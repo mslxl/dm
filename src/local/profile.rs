@@ -1,4 +1,3 @@
-use clap::{arg, ArgAction, ArgMatches, Command};
 use miette::{Context, IntoDiagnostic, Result};
 use rust_i18n::t;
 
@@ -10,59 +9,9 @@ use crate::{
 
 use super::{TomlGlobalProfileEntry, Transaction};
 
-pub fn args() -> Command {
-    Command::new("profile")
-        .about(t!("profile.about"))
-        .subcommand(
-            Command::new("create")
-                .aliases(["c", "new"])
-                .about(t!("profile.create.help"))
-                .arg(arg!(<NAME>).help(t!("profile.create.arg_name"))),
-        )
-        .subcommand(
-            Command::new("use")
-                .alias("u")
-                .about(t!("profile.use.help"))
-                .arg(arg!(<NAME>).help(t!("profile.use.arg_name"))),
-        )
-        .subcommand(
-            Command::new("delete")
-                .aliases(["d", "rm"])
-                .about(t!("profile.delete.help"))
-                .arg(arg!(<NAME>).help(t!("profile.delete.arg_name")))
-                .arg(
-                    arg!(-y - -yes)
-                        .help(t!("profile.delete.arg_yes"))
-                        .action(ArgAction::SetTrue),
-                ),
-        )
-}
-
-async fn exec(matches: &ArgMatches) -> Result<()> {
-    if let Some(matches) = matches.subcommand_matches("create") {
-        create(matches)
-            .await
-            .wrap_err(t!("error.ctx.cmd.profile.create"))
-    } else if let Some(matches) = matches.subcommand_matches("use") {
-        use_profile(matches)
-            .await
-            .wrap_err(t!("error.ctx.cmd.profile.checkout"))
-    } else if let Some(matches) = matches.subcommand_matches("delete") {
-        delete(matches)
-            .await
-            .wrap_err(t!("error.ctx.cmd.profile.delete"))
-    } else {
-        Ok(())
-    }
-}
-
-pub async fn try_match(matches: &ArgMatches) -> Option<Result<()>> {
-    Some(exec(matches.subcommand_matches("profile")?).await)
-}
-async fn create(matches: &ArgMatches) -> Result<()> {
+pub async fn create_profile(name: String) -> Result<()> {
     let mut transaction = Transaction::start().wrap_err(t!("error.ctx.transcation.init"))?;
 
-    let name = matches.get_one::<String>("NAME").unwrap().clone();
     let profile_list = &mut transaction.global.registery.profile;
     if profile_list
         .iter()
@@ -81,9 +30,7 @@ async fn create(matches: &ArgMatches) -> Result<()> {
         .wrap_err(t!("error.ctx.transcation.commit"))?;
     Ok(())
 }
-
-async fn use_profile(matches: &ArgMatches) -> Result<()> {
-    let name = matches.get_one::<String>("NAME").unwrap().clone();
+pub async fn use_profile(name: String) -> Result<()> {
     let transaction = Transaction::start().wrap_err(t!("error.ctx.transcation.init"))?;
     if transaction
         .global
@@ -106,9 +53,7 @@ async fn use_profile(matches: &ArgMatches) -> Result<()> {
     }
 }
 
-async fn delete(matches: &ArgMatches) -> Result<()> {
-    let name = matches.get_one::<String>("NAME").unwrap().clone();
-    let confirm = matches.get_flag("yes");
+pub async fn delete(name: String, confirm_all: bool) -> Result<()> {
 
     if name == "default" {
         Err(DMError::ProfileError {
@@ -134,13 +79,15 @@ async fn delete(matches: &ArgMatches) -> Result<()> {
         .iter()
         .position(|entry| entry.name == name)
     {
-        if !confirm
+        if !confirm_all
             && !ui().input_yes_or_no(Some(&t!("profile.delete.confirm", name = &name)), false)?
         {
             return Ok(());
         }
         transaction.global.registery.profile.remove(idx);
-        transaction.commit().wrap_err(t!("error.ctx.transcation.commit"))?;
+        transaction
+            .commit()
+            .wrap_err(t!("error.ctx.transcation.commit"))?;
         Ok(())
     } else {
         Err(DMError::ProfileError {
