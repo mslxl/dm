@@ -1,6 +1,8 @@
+use miette::Context;
 use miette::IntoDiagnostic;
 use miette::Result;
 use rust_i18n::t;
+use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell, RefMut};
 use std::{collections::HashMap, path::PathBuf};
@@ -52,7 +54,9 @@ impl Transaction {
             TomlGlobal::default()
         } else {
             let toml = std::fs::read_to_string(global_toml_path).into_diagnostic()?;
-            toml_edit::de::from_str(&toml).into_diagnostic()?
+            toml_edit::de::from_str(&toml)
+                .into_diagnostic()
+                .wrap_err(t!("error.ctx.serde.deserializing"))?
         };
         Ok(Self {
             group: RefCell::new(HashMap::new()),
@@ -80,7 +84,8 @@ impl Transaction {
                 let ins = toml_edit::de::from_str::<TomlGroup>(
                     &std::fs::read_to_string(file).into_diagnostic()?,
                 )
-                .into_diagnostic()?;
+                .into_diagnostic()
+                .wrap_err(t!("error.ctx.serde.deserializing"))?;
                 self.group.borrow_mut().insert(name, ins);
             } else {
                 self.group
@@ -92,10 +97,10 @@ impl Transaction {
     }
 
     pub fn group(&self, name: &str) -> Result<Option<Ref<TomlGroup>>> {
-        let borrow = self.group.borrow();
-        if !borrow.contains_key(name) {
+        if !self.group.borrow().contains_key(name) {
             self.load_group_toml(name.to_string())?;
         }
+        let borrow = self.group.borrow();
 
         if !borrow.contains_key(name) {
             return Ok(None);
@@ -105,10 +110,10 @@ impl Transaction {
     }
 
     pub fn group_mut(&mut self, name: &str) -> Result<Option<RefMut<TomlGroup>>> {
-        let borrow = self.group.borrow_mut();
-        if !borrow.contains_key(name) {
+        if !self.group.borrow().contains_key(name) {
             self.load_group_toml(name.to_string())?;
         }
+        let borrow = self.group.borrow_mut();
 
         if !borrow.contains_key(name) {
             return Ok(None);
@@ -138,12 +143,16 @@ impl Transaction {
         // Save global configuration
         std::fs::write(
             global_toml_path,
-            toml_edit::ser::to_string_pretty(&self.global).into_diagnostic()?,
+            toml_edit::ser::to_string_pretty(&self.global)
+                .into_diagnostic()
+                .wrap_err(t!("error.ctx.serde.serializing"))?,
         )
         .into_diagnostic()?;
         // Save group manifest
         for (name, v) in self.group.borrow().iter() {
-            let value = toml_edit::ser::to_string_pretty(v).into_diagnostic()?;
+            let value = toml_edit::ser::to_string_pretty(v)
+                .into_diagnostic()
+                .wrap_err(t!("error.ctx.serde.serializing"))?;
             let dir = get_group_dir(name)?;
             if !dir.exists() {
                 std::fs::create_dir_all(&dir).into_diagnostic()?;
@@ -208,24 +217,81 @@ fn get_global_toml_path() -> Result<PathBuf> {
     Ok(get_app_data_dir()?.join("dm.toml"))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug)]
 enum DMPath {
     Normal(String),
-    Dynamic(Vec<String>)
+    Dynamic(Vec<String>),
+}
+
+impl Serialize for DMPath {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            DMPath::Normal(str) => serializer.serialize_str(str),
+            DMPath::Dynamic(list) => list.serialize(serializer),
+        }
+    }
+}
+
+struct DMPathVisitor;
+impl<'de> Visitor<'de> for DMPathVisitor {
+    type Value = DMPath;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a string or an array of string")
+    }
+
+    fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(DMPath::Normal(v))
+    }
+
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(DMPath::Normal(v.to_string()))
+    }
+    fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let mut data = vec![];
+        loop {
+            if let Some(v) = seq.next_element().unwrap() {
+                data.push(v)
+            } else {
+                break;
+            }
+        }
+        Ok(DMPath::Dynamic(data))
+    }
+}
+
+impl<'de> Deserialize<'de> for DMPath {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(DMPathVisitor)
+    }
 }
 
 #[derive(Serialize, Deserialize)]
-enum TomlItemEntry {
-    File {
-        path: String,
-        manaul: bool,
-        install: HashMap<String, DMPath>,
-    },
-    Dir {
-        path: String,
-        manaul: bool,
-        install: HashMap<String, DMPath>,
-    },
+enum ItemEntryKind {
+    File,
+    Dir,
+}
+#[derive(Serialize, Deserialize)]
+struct TomlItemEntry {
+    kind: ItemEntryKind,
+    path: String,
+    manaul: bool,
+    install: HashMap<String, DMPath>,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -73,7 +73,7 @@ impl SpecDir {
             }
         }
     }
-    pub fn match_path<P: AsRef<Path>>(&self, path: P) -> Result<Vec<String>> {
+    pub fn match_path<P: AsRef<Path>>(&self, path: P) -> Result<Vec<(String, &PathBuf)>> {
         let path = dunce::canonicalize(path).into_diagnostic()?;
         let matches = self
             .platform
@@ -85,7 +85,6 @@ impl SpecDir {
                     .map(|(name, path)| (format!("${}", name), path)),
             )
             .filter(|(_, p)| path.starts_with(p))
-            .map(|(name, _)| name)
             .collect();
         Ok(matches)
     }
@@ -93,23 +92,23 @@ impl SpecDir {
 impl Display for SpecDirTreeDisplay<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if !self.0.platform.is_empty() {
-            writeln!(f, "├ platform")?;
+            writeln!(f, "├─ platform")?;
             for (idx, (name, path)) in self.0.platform.iter().enumerate() {
                 if idx == self.0.platform.len() - 1 {
-                    write!(f, "│  └ ")?;
+                    write!(f, "│   └─ ")?;
                 } else {
-                    write!(f, "│  ├ ")?;
+                    write!(f, "│   ├─ ")?;
                 }
                 writeln!(f, "{} \t{}", name, path.to_str().unwrap())?;
             }
         }
         if !self.0.env.is_empty() {
-            writeln!(f, "└ env")?;
+            writeln!(f, "└─ env")?;
             for (idx, (name, path)) in self.0.env.iter().enumerate() {
                 if idx == self.0.env.len() - 1 {
-                    write!(f, "   └ ")?;
+                    write!(f, "    └─ ")?;
                 } else {
-                    write!(f, "   ├ ")?;
+                    write!(f, "    ├─ ")?;
                 }
                 writeln!(f, "{} \t{}", name, path.to_str().unwrap())?;
             }
@@ -193,7 +192,7 @@ fn get_platform_spec_dir() -> Result<HashMap<&'static str, PathBuf>> {
 }
 
 pub fn to_depositiory_path<P: AsRef<Path>>(path: P) -> PathBuf {
-    let path = dunce::canonicalize(path).unwrap();
+    let path = std::fs::canonicalize(path).unwrap();
     let path = path.to_str().unwrap();
     if path.starts_with("/") {
         // Unix path

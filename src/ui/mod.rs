@@ -1,4 +1,4 @@
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use rust_i18n::t;
 
 pub mod cli;

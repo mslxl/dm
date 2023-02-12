@@ -59,5 +59,5 @@ async fn create(matches: &ArgMatches) -> Result<()> {
             .push(name);
     }
 
-    transaction.commit()
+    transaction.commit().wrap_err(t!("error.ctx.transcation.commit"))
 }

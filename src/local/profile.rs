@@ -135,12 +135,12 @@ async fn delete(matches: &ArgMatches) -> Result<()> {
         .position(|entry| entry.name == name)
     {
         if !confirm
-            && !ui().input_yes_or_no(Some(t!("profile.delete.confirm", name = &name)), false)?
+            && !ui().input_yes_or_no(Some(&t!("profile.delete.confirm", name = &name)), false)?
         {
             return Ok(());
         }
         transaction.global.registery.profile.remove(idx);
-        transaction.commit()?;
+        transaction.commit().wrap_err(t!("error.ctx.transcation.commit"))?;
         Ok(())
     } else {
         Err(DMError::ProfileError {
