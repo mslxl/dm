@@ -1,6 +1,6 @@
+/tui/target/
 /target/
 /.idea/
-/.vscode/
 
 *.exe
 *.a

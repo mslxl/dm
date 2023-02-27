@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "lokalise.i18n-ally",
+    "rust-lang.rust-analyzer",
+    "bungcip.better-toml",
+    "github.vscode-pull-request-github",
+  ]
+}

@@ -1,0 +1,102 @@
+app:
+  desc: Yet another powerful dotfiles manager written in Rust
+  avaliable_locales: 'Avaliable locales: %{locales}'
+  depository_path: 'Depository path: %{path}'
+  configuration_path: 'Configuration file: %{path}'
+  info:
+    pssl: 'Platform-specific standard location: %{loc}'
+error:
+  ctx:
+    transcation:
+      init: When initialize transcation
+      commit: When commit changes
+    cmd:
+      profile:
+        create: When creating profile
+        checkout: When checkout another profile
+        delete: When delete profile
+      group:
+        create: When creating group
+      add: When adding file
+      info: When get enviroment infomation
+    config:
+      save: When saving configuration
+    serde:
+      serializing: When serializing toml object
+      deserializing: When deserializing toml object
+    io:
+      temp: When creating temprory file
+      copy2depository: When copy file to depository
+      update_file: When updating file
+  env:
+    dir_not_certain:
+      msg: DM can't decide to use which directory should be use for store data
+      advice: Assign environment var 'DM_CONFIG_FILE' and 'DM_DATA' to specify paths
+    get_platform: When obtain platform specific standard dir
+    gen_env: When obtain environment variable
+    env_not_found: Path %{name} is not in current enviroment
+    not_path_prefix: The first element in dynamic path must be a valid path prefix
+    prefix_not_first: Specific path must be the first element of dynamic path
+    empty_path: Dynamic path must not be empty
+  transcation:
+    lock:
+      msg: The depository has been locked!
+      advice: If there is no dm instance is running, delete %{lock} file by hand
+  profile:
+    duplicate:
+      msg: Profile %{name} already exists
+      advice: Recomand to use hostname as profile name
+    not_exists:
+      msg: Profile %{name} not exists
+    delete_def:
+      msg: Can't delete default profile
+      advice: 'Remove all groups in configuration instead of delete profile '
+    delete_using:
+      msg: Can't delete current profile
+      advice: Checkout to other profile by 'dm profile use <NAME>' first
+    delete_not_exists:
+      msg: Can't delete a profile that didn't exists
+  prompt:
+    nan: Input is not a number
+    not_bool: Input is not a bool
+    missing_choose: Option %{pos} is not exists
+  group:
+    duplicate:
+      msg: Group named '%{name}' is already exists
+    not_exists:
+      msg: Group '%{name}' is not exists
+profile:
+  about: Manage profiles
+  create:
+    help: Create new profile
+    arg_name: Profile name
+  use:
+    help: Use specify profile
+    arg_name: Profile name
+  delete:
+    help: Delete specify profile
+    arg_name: Profile name
+    arg_yes: Confirm the operation
+    confirm: Confirm to delete profile %{name}
+group:
+  about: Manage groups
+  create:
+    help: Create new group
+    arg_name: Group name
+    arg_nouse: Create the group but not add it to current profile
+file:
+  add:
+    help: Add file or directory to specify group
+    arg_name: Group name
+    arg_path: Path to file/directory
+    arg_compress: Enable zstd compress
+    arg_encrypt: Enable encrypt
+    arg_manual_install: Use a custom script to install manually
+    arg_symbolic_link: Use symbolic link
+    arg_link: Create link instead of copying file, default use hard-link
+    arg_recongize: Recongize specifial path according to platform and environment variable
+    prompt_which_path: Recongized special path, choose which one to be used
+lock:
+  content: DO NOT DELETE THIS FILE MAUNALLY! This file is automatically created by dm
+info:
+  help: Print enviroment information
