@@ -24,12 +24,20 @@ error:
     serde:
       serializing: When serializing toml object
       deserializing: When deserializing toml object
+    io:
+      temp: When creating temprory file
+      copy2depository: When copy file to depository
+      update_file: When updating file
   env:
     dir_not_certain:
       msg: DM can't decide to use which directory should be use for store data
       advice: Assign environment var 'DM_CONFIG_FILE' and 'DM_DATA' to specify paths
     get_platform: When obtain platform specific standard dir
     gen_env: When obtain environment variable
+    env_not_found: Path %{name} is not in current enviroment
+    not_path_prefix: The first element in dynamic path must be a valid path prefix
+    prefix_not_first: Specific path must be the first element of dynamic path
+    empty_path: Dynamic path must not be empty
   transcation:
     lock:
       msg: The depository has been locked!

@@ -1,20 +1,51 @@
-use std::path::PathBuf;
 use miette::Result;
+use std::path::PathBuf;
 
-enum Task{
-  Map(Box<dyn TaskMap>),
-  Reduce(Box<dyn TaskReduce>),
-  Flatten(Box<dyn TaskFlatten>)
+use crate::tempfile::Tempfile;
+
+enum TaskContent {
+    File(PathBuf),
+    Mem(Vec<u8>),
 }
 
-trait TaskMap{
-  fn accept(&self, src: PathBuf, dst: PathBuf) -> Result<bool>;
+enum Task {
+    Map(Box<dyn FnMut(TaskContent) -> Result<TaskContent>>),
+    Reduce(Box<dyn FnOnce(Vec<TaskContent>) -> Result<TaskContent>>),
+    Collect(Box<dyn FnMut(TaskContent) -> Result<Vec<TaskContent>>>),
 }
 
-trait TaskReduce{
-  fn accept(&self, src:[PathBuf], dst: PathBuf) -> Result<bool>;
-}
+pub struct TaskEval(Vec<Task>);
 
-trait TaskFlatten{
-  fn accept(&self, src: PathBuf) -> Result<(bool, Vec<PathBuf>)>;
+impl TaskEval {
+    fn exec_top(mut self, param: Vec<TaskContent>) -> Result<Vec<TaskContent>> {
+        let task = self.0.pop();
+        match task {
+            None => Ok(param),
+            Some(Task::Collect(mut f)) => {
+                let mut result = Vec::new();
+                for item in param {
+                    let mut r = (*f)(item)?;
+                    result.append(&mut r);
+                }
+                self.exec_top(result)
+            }
+            Some(Task::Map(mut f)) => {
+                let mut result = Vec::new();
+                for item in param {
+                    let r = (*f)(item)?;
+                    result.push(r);
+                }
+                self.exec_top(result)
+            },
+            Some(Task::Reduce(f)) => {
+              let result = f(param)?;
+              self.exec_top(vec![result])
+            },
+        }
+    }
+
+    pub fn exec(mut self, param: TaskContent) -> Result<Vec<TaskContent>> {
+        self.0.reverse();
+        self.exec_top(vec![param])
+    }
 }

@@ -1,6 +1,7 @@
-use dm::{config};
-use miette::{IntoDiagnostic, Result};
+mod uicli;
 
+use dm::config;
+use miette::{IntoDiagnostic, Result};
 rust_i18n::i18n!("locales");
 
 async fn apply_locales() {
@@ -17,6 +18,8 @@ mod cli {
             use clap::{arg, ArgAction, ArgMatches, Command};
             use miette::{Context, Result};
             use rust_i18n::t;
+
+            use crate::uicli;
 
             pub fn args() -> Command {
                 Command::new("profile")
@@ -48,15 +51,19 @@ mod cli {
 
             async fn exec(matches: &ArgMatches) -> Result<()> {
                 if let Some(matches) = matches.subcommand_matches("create") {
-                    create_profile(matches)
+                    let name = matches.get_one::<String>("NAME").unwrap().clone();
+                    dm::local::profile::create_profile(name)
                         .await
                         .wrap_err(t!("error.ctx.cmd.profile.create"))
                 } else if let Some(matches) = matches.subcommand_matches("use") {
-                    use_profile(matches)
+                    let name = matches.get_one::<String>("NAME").unwrap().clone();
+                    dm::local::profile::use_profile(name)
                         .await
                         .wrap_err(t!("error.ctx.cmd.profile.checkout"))
                 } else if let Some(matches) = matches.subcommand_matches("delete") {
-                    delete_profile(matches)
+                    let name = matches.get_one::<String>("NAME").unwrap().clone();
+                    let confirm = matches.get_flag("yes");
+                    dm::local::profile::delete(&uicli::Cli, name, confirm)
                         .await
                         .wrap_err(t!("error.ctx.cmd.profile.delete"))
                 } else {
@@ -66,22 +73,6 @@ mod cli {
 
             pub async fn try_match(matches: &ArgMatches) -> Option<Result<()>> {
                 Some(exec(matches.subcommand_matches("profile")?).await)
-            }
-
-            async fn use_profile(matches: &ArgMatches) -> Result<()> {
-                let name = matches.get_one::<String>("NAME").unwrap().clone();
-                dm::local::profile::use_profile(name).await
-            }
-
-            async fn create_profile(matches: &ArgMatches) -> Result<()> {
-                let name = matches.get_one::<String>("NAME").unwrap().clone();
-                dm::local::profile::create_profile(name).await
-            }
-
-            async fn delete_profile(matches: &ArgMatches) -> Result<()> {
-                let name = matches.get_one::<String>("NAME").unwrap().clone();
-                let confirm = matches.get_flag("yes");
-                dm::local::profile::delete(name, confirm).await
             }
         }
         pub mod group {
@@ -105,7 +96,9 @@ mod cli {
 
             async fn exec(matches: &ArgMatches) -> Result<()> {
                 if let Some(matches) = matches.subcommand_matches("create") {
-                    create(matches)
+                    let name = matches.get_one::<String>("NAME").unwrap().clone();
+                    let no_use = matches.get_flag("nouse");
+                    dm::local::group::create_group(name, no_use)
                         .await
                         .wrap_err(t!("error.ctx.cmd.group.create"))
                 } else {
@@ -116,12 +109,6 @@ mod cli {
             pub async fn try_match(matches: &ArgMatches) -> Option<Result<()>> {
                 Some(exec(matches.subcommand_matches("group")?).await)
             }
-
-            async fn create(matches: &ArgMatches) -> Result<()> {
-                let name = matches.get_one::<String>("NAME").unwrap().clone();
-                let no_use = matches.get_flag("nouse");
-                dm::local::group::create_group(name, no_use).await
-            }
         }
         pub mod file {
 
@@ -131,13 +118,22 @@ mod cli {
             use miette::{Context, Result};
             use rust_i18n::t;
 
+            use crate::uicli;
+
             async fn exec_add(matches: &ArgMatches) -> Result<()> {
                 let path = matches.get_one::<PathBuf>("PATH").unwrap();
                 let group_name = matches.get_one::<String>("GROUP").unwrap();
                 let try_recongize = matches.get_flag("recongize");
                 let manual_install = matches.get_flag("manual");
 
-                dm::local::file::add_file(path, group_name, try_recongize, manual_install).await
+                dm::local::file::add_file(
+                    &uicli::Cli,
+                    path,
+                    group_name,
+                    try_recongize,
+                    manual_install,
+                )
+                .await
             }
             pub async fn try_match_add(matches: &ArgMatches) -> Option<Result<()>> {
                 Some(

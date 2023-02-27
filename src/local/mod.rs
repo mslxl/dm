@@ -9,6 +9,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use crate::env::get_app_data_dir;
 use crate::env::get_group_dir;
+use crate::env::SpecDir;
 use crate::error::DMError;
 use crate::error::GroupErrorKind;
 
@@ -217,10 +218,49 @@ fn get_global_toml_path() -> Result<PathBuf> {
     Ok(get_app_data_dir()?.join("dm.toml"))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum DMPath {
     Normal(String),
     Dynamic(Vec<String>),
+}
+
+impl DMPath {
+    pub fn parse(&self, env: &SpecDir) -> Result<PathBuf> {
+        match self {
+            DMPath::Normal(dir) => Ok(PathBuf::from(dir)),
+            DMPath::Dynamic(data) => {
+                if data.is_empty() {
+                    Err(DMError::EnvError {
+                        msg: t!("error.env.empty_path"),
+                        advice: None,
+                    })
+                    .into_diagnostic()?;
+                }
+                let prefix = data.first().unwrap();
+                let prefix = match prefix.chars().nth(0).unwrap() {
+                    '$' => PathBuf::from(std::env::var(&prefix[1..]).into_diagnostic()?),
+                    '#' => PathBuf::from(env.get_path(prefix).ok_or(DMError::EnvError {
+                        msg: t!("error.env.env_not_found", name = prefix),
+                        advice: None,
+                    })?),
+                    _ => PathBuf::from(prefix),
+                };
+                let mut path = PathBuf::from(prefix);
+                for item in &data[1..] {
+                    match item.chars().nth(0).unwrap() {
+                        '#' => Err(DMError::EnvError {
+                            msg: t!("error.env.prefix_not_first"),
+                            advice: None,
+                        })
+                        .into_diagnostic()?,
+                        '$' => path = path.join(std::env::var(&item[1..]).into_diagnostic()?),
+                        _ => path = path.join(item),
+                    }
+                }
+                Ok(path)
+            }
+        }
+    }
 }
 
 impl Serialize for DMPath {
@@ -288,10 +328,33 @@ enum ItemEntryKind {
 }
 #[derive(Serialize, Deserialize)]
 struct TomlItemEntry {
+    /// 标明是 File 还是 Dir
     kind: ItemEntryKind,
+    /// 在仓库中的路径
     path: String,
+    /// 是否使用外部脚本进行同步/安装管理
     manaul: bool,
+    /// 在不同平台下的安装路径
     install: HashMap<String, DMPath>,
+}
+
+impl TomlItemEntry {
+    pub fn new(kind: ItemEntryKind, path: String, manaul: bool) -> Self {
+        Self {
+            kind,
+            path,
+            manaul,
+            install: HashMap::new(),
+        }
+    }
+    /// Get install path in current platform
+    pub fn get_platform_install_path(&self) -> Option<&DMPath> {
+        self.install.get(&std::env::consts::OS.to_string())
+    }
+    /// Set install path in current platform
+    pub fn insert_platform_install_path(&mut self, path: DMPath) {
+        self.install.insert(std::env::consts::OS.to_string(), path);
+    }
 }
 
 #[derive(Serialize, Deserialize)]

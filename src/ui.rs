@@ -1,7 +1,7 @@
+
 use miette::Result;
 use rust_i18n::t;
 
-pub mod cli;
 pub trait Ui {
     fn msg(&self, level: MsgLevel, msg: String);
     fn input(&self, prompt: Option<&str>) -> Result<String>;
@@ -32,10 +32,6 @@ pub trait Ui {
             }
         }
     }
-}
-
-pub fn ui() -> Box<dyn Ui> {
-    Box::new(cli::Cli)
 }
 
 pub enum MsgLevel {

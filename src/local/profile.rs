@@ -3,8 +3,7 @@ use rust_i18n::t;
 
 use crate::{
     config,
-    error::{DMError, ProfileErrorKind},
-    ui::ui,
+    error::{DMError, ProfileErrorKind}, ui::Ui,
 };
 
 use super::{TomlGlobalProfileEntry, Transaction};
@@ -53,7 +52,7 @@ pub async fn use_profile(name: String) -> Result<()> {
     }
 }
 
-pub async fn delete(name: String, confirm_all: bool) -> Result<()> {
+pub async fn delete(ui_handle:&dyn Ui, name: String, confirm_all: bool) -> Result<()> {
 
     if name == "default" {
         Err(DMError::ProfileError {
@@ -80,7 +79,7 @@ pub async fn delete(name: String, confirm_all: bool) -> Result<()> {
         .position(|entry| entry.name == name)
     {
         if !confirm_all
-            && !ui().input_yes_or_no(Some(&t!("profile.delete.confirm", name = &name)), false)?
+            && !ui_handle.input_yes_or_no(Some(&t!("profile.delete.confirm", name = &name)), false)?
         {
             return Ok(());
         }

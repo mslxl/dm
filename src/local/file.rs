@@ -1,21 +1,17 @@
-use std::{
-    collections::HashMap,
-    path::{PathBuf, Path},
-};
+use std::path::{Path, PathBuf};
 
 use miette::{Context, IntoDiagnostic, Result};
 use rust_i18n::t;
 
 use crate::{
-    env::{self, to_depositiory_path},
+    env::{self, get_group_dir, to_depositiory_path, SpecDir},
     error::{DMError, GroupErrorKind},
-    ui::ui,
+    ui::Ui,
 };
 
 use super::{DMPath, ItemEntryKind, TomlItemEntry, Transaction};
 
-
-fn convert_path_format(path: PathBuf, try_recongized: bool) -> Result<DMPath> {
+fn recongize_spec_path(path: PathBuf, try_recongized: bool, ui_handle: &dyn Ui) -> Result<DMPath> {
     let value = if try_recongized {
         let spec_dir = env::SpecDir::new()?;
         let mut matched_path =
@@ -27,14 +23,14 @@ fn convert_path_format(path: PathBuf, try_recongized: bool) -> Result<DMPath> {
             .map(|(name, path)| format!("{}={}", name, path.to_str().unwrap()))
             .collect();
         matched_option.insert(0, String::from("None"));
-        let use_pos = ui().choose(
+        let use_pos = ui_handle.choose(
             Some(&t!("file.add.prompt_which_path")),
             matched_option.iter().map(|x| x.as_str()).collect(),
         )? - 1;
 
         // User choose 'None' option
         if use_pos == -1 {
-            return convert_path_format(path, false);
+            return recongize_spec_path(path, false, ui_handle);
         }
 
         let (matched_path_name, matched_path) = matched_path
@@ -60,7 +56,40 @@ fn convert_path_format(path: PathBuf, try_recongized: bool) -> Result<DMPath> {
     Ok(value)
 }
 
-pub async fn add_file<P:AsRef<Path>>(path: P, group_name: &str, try_recongize: bool, manaul_install:bool) -> Result<()>{
+async fn update_file_from_entry(
+    ui_handle: &dyn Ui,
+    group_name: &str,
+    entry: &TomlItemEntry,
+) -> Result<()> {
+    if entry.manaul {
+        todo!("invoke update script configuration in entry, let script update depository");
+        return Ok(());
+    }
+
+    let src = entry
+        .get_platform_install_path()
+        .unwrap()
+        .parse(&SpecDir::new()?)?;
+    let dst = get_group_dir(group_name).unwrap().join(&entry.path);
+    ui_handle.msg(crate::ui::MsgLevel::Info, format!("Update {:?}", dst));
+    tokio::fs::create_dir_all(dst.parent().unwrap())
+        .await
+        .into_diagnostic()
+        .wrap_err(t!("error.ctx.io.copy2depository"))?;
+    tokio::fs::copy(src, dst)
+        .await
+        .into_diagnostic()
+        .wrap_err(t!("error.ctx.io.copy2depository"))?;
+    Ok(())
+}
+
+pub async fn add_file<P: AsRef<Path>>(
+    ui_handle: &dyn Ui,
+    path: P,
+    group_name: &str,
+    try_recongize: bool,
+    manaul_install: bool,
+) -> Result<()> {
     let path = path.as_ref().to_path_buf();
     let mut transaction = Transaction::start().wrap_err(t!("error.ctx.transcation.init"))?;
     let mut group = transaction
@@ -81,23 +110,22 @@ pub async fn add_file<P:AsRef<Path>>(path: P, group_name: &str, try_recongize: b
         ItemEntryKind::Dir
     };
 
-    let dm_path = convert_path_format(path.clone(), try_recongize)?;
-    let mut install_path = HashMap::new();
-    install_path.insert(std::env::consts::OS.to_string(), dm_path);
+    let dm_path = recongize_spec_path(path.clone(), try_recongize, ui_handle)?;
 
-    let file_entry = TomlItemEntry {
+    let mut file_entry = TomlItemEntry::new(
         kind,
-        path: to_depositiory_path(path).to_str().unwrap().to_string(),
-        manaul: manaul_install,
-        install: install_path,
-    };
+        to_depositiory_path(path).to_str().unwrap().to_string(),
+        manaul_install,
+    );
+    file_entry.insert_platform_install_path(dm_path);
+    update_file_from_entry(ui_handle, group_name, &file_entry)
+        .await
+        .wrap_err(t!("error.ctx.io.update_file"))?;
+
     group.files.push(file_entry);
 
     std::mem::drop(group);
     transaction
         .commit()
         .wrap_err(t!("error.ctx.transcation.commit"))
-
 }
-
-

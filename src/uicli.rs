@@ -1,10 +1,9 @@
+use dm::ui::{Ui, MsgLevel};
 use miette::{IntoDiagnostic, Result};
 use rust_i18n::t;
 use std::io::Write;
 
 use owo_colors::OwoColorize;
-
-use super::{MsgLevel, Ui};
 
 pub struct Cli;
 impl Ui for Cli {
