@@ -27,8 +27,6 @@ $cargo build --release
 
 4. Find the executable in `target/release/dm.exe`
 
-## Features
-
 - [X] Manage profile
 - [ ] Manage files by group
 - [ ] Basic file manage

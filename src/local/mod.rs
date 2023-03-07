@@ -13,9 +13,11 @@ use crate::env::SpecDir;
 use crate::error::DMError;
 use crate::error::GroupErrorKind;
 
+pub mod profile;
 pub mod file;
 pub mod group;
-pub mod profile;
+pub mod db;
+mod updater;
 
 struct Transaction {
     group: RefCell<HashMap<String, TomlGroup>>,
@@ -97,30 +99,40 @@ impl Transaction {
         Ok(())
     }
 
-    pub fn group(&self, name: &str) -> Result<Option<Ref<TomlGroup>>> {
+    pub fn group(&self, name: &str) -> Result<Ref<TomlGroup>> {
         if !self.group.borrow().contains_key(name) {
             self.load_group_toml(name.to_string())?;
         }
         let borrow = self.group.borrow();
 
         if !borrow.contains_key(name) {
-            return Ok(None);
+            return Err(DMError::GroupError {
+                kind: GroupErrorKind::NotExists,
+                msg: t!("error.group.not_exists"),
+                advice: None,
+            })
+            .into_diagnostic();
         }
         let r = Ref::map(borrow, |map| map.get(name).unwrap());
-        Ok(Some(r))
+        Ok(r)
     }
 
-    pub fn group_mut(&mut self, name: &str) -> Result<Option<RefMut<TomlGroup>>> {
+    pub fn group_mut(&mut self, name: &str) -> Result<RefMut<TomlGroup>> {
         if !self.group.borrow().contains_key(name) {
             self.load_group_toml(name.to_string())?;
         }
         let borrow = self.group.borrow_mut();
 
         if !borrow.contains_key(name) {
-            return Ok(None);
+            return Err(DMError::GroupError {
+                kind: GroupErrorKind::NotExists,
+                msg: t!("error.group.not_exists"),
+                advice: None,
+            })
+            .into_diagnostic();
         }
         let r = RefMut::map(borrow, |map| map.get_mut(name).unwrap());
-        Ok(Some(r))
+        Ok(r)
     }
 
     pub fn create_group(&mut self, name: &str) -> Result<RefMut<TomlGroup>> {
@@ -219,7 +231,7 @@ fn get_global_toml_path() -> Result<PathBuf> {
 }
 
 #[derive(Debug, Clone)]
-enum DMPath {
+pub enum DMPath {
     Normal(String),
     Dynamic(Vec<String>),
 }
@@ -321,13 +333,13 @@ impl<'de> Deserialize<'de> for DMPath {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-enum ItemEntryKind {
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ItemEntryKind {
     File,
     Dir,
 }
-#[derive(Serialize, Deserialize)]
-struct TomlItemEntry {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TomlItemEntry {
     /// 标明是 File 还是 Dir
     kind: ItemEntryKind,
     /// 在仓库中的路径

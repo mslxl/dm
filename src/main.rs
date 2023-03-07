@@ -135,12 +135,31 @@ mod cli {
                 )
                 .await
             }
+            async fn exec_update(matches: &ArgMatches) -> Result<()> {
+                let group_name = matches.get_one::<String>("GROUP").unwrap();
+
+                dm::local::group::update_group(&uicli::Cli, group_name.to_owned()).await
+            }
             pub async fn try_match_add(matches: &ArgMatches) -> Option<Result<()>> {
                 Some(
                     exec_add(matches.subcommand_matches("add")?)
                         .await
                         .wrap_err(t!("error.ctx.cmd.add")),
                 )
+            }
+            pub async fn try_match_update(matches: &ArgMatches) -> Option<Result<()>> {
+                Some(
+                    exec_update(matches.subcommand_matches("update")?)
+                        .await
+                        .wrap_err(t!("error.ctx.cmd.update")),
+                )
+            }
+
+            pub fn args_update() -> Command {
+                Command::new("update")
+                    .alias("u")
+                    .about(t!("file.update.help"))
+                    .arg(arg!(<GROUP>).help(t!("file.update.arg_name")))
             }
 
             pub fn args_add() -> Command {
@@ -217,6 +236,7 @@ mod cli {
             .subcommand(crate::cli::local::group::args())
             .subcommand(crate::cli::info::args())
             .subcommand(crate::cli::local::file::args_add())
+            .subcommand(crate::cli::local::file::args_update())
     }
 }
 
@@ -228,6 +248,7 @@ async fn main() -> Result<()> {
         .or(cli::local::profile::try_match(&matches).await)
         .or(cli::local::group::try_match(&matches).await)
         .or(cli::local::file::try_match_add(&matches).await)
+        .or(cli::local::file::try_match_update(&matches).await)
         .or(cli::info::try_match(&matches).await);
     if let None = matched {
         return cli::args().print_long_help().into_diagnostic();
