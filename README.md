@@ -1,6 +1,8 @@
 # DM - Dotfiles Manager
 
-**WIP**
+~~WIP~~
+I convert to NixOS, so this project will not update in future
+
 
 [![Rust](https://github.com/mslxl/dm/actions/workflows/rust.yml/badge.svg)](https://github.com/mslxl/dm/actions/workflows/rust.yml)
 
